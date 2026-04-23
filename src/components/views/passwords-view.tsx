@@ -80,6 +80,7 @@ interface PasswordEntry {
 }
 
 const categoryConfig: Record<string, { label: string; tagClass: string; iconBg: string; iconColor: string }> = {
+  channel: { label: '渠道', tagClass: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400', iconBg: 'from-teal-500/15 to-teal-500/5', iconColor: 'text-teal-600 dark:text-teal-400' },
   website: { label: '网站', tagClass: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400', iconBg: 'from-blue-500/15 to-blue-500/5', iconColor: 'text-blue-600 dark:text-blue-400' },
   game: { label: '游戏', tagClass: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400', iconBg: 'from-violet-500/15 to-violet-500/5', iconColor: 'text-violet-600 dark:text-violet-400' },
   tool: { label: '工具', tagClass: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400', iconBg: 'from-amber-500/15 to-amber-500/5', iconColor: 'text-amber-600 dark:text-amber-400' },
@@ -299,6 +300,7 @@ export function PasswordsView() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">全部分类</SelectItem>
+                <SelectItem value="channel">渠道</SelectItem>
                 <SelectItem value="website">网站</SelectItem>
                 <SelectItem value="game">游戏</SelectItem>
                 <SelectItem value="tool">工具</SelectItem>
@@ -377,6 +379,7 @@ export function PasswordsView() {
                 >
                   {/* Category accent */}
                   <div className={cn('absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r',
+                    entry.category === 'channel' && 'from-teal-400 to-teal-500',
                     entry.category === 'website' && 'from-blue-400 to-blue-500',
                     entry.category === 'game' && 'from-violet-400 to-violet-500',
                     entry.category === 'tool' && 'from-amber-400 to-amber-500',
@@ -605,6 +608,7 @@ export function PasswordsView() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="channel">渠道</SelectItem>
                       <SelectItem value="website">网站</SelectItem>
                       <SelectItem value="game">游戏</SelectItem>
                       <SelectItem value="tool">工具</SelectItem>
