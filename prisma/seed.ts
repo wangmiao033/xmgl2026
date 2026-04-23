@@ -459,6 +459,78 @@ async function main() {
     ],
   })
 
+  // ====== Sample Password Entries ======
+  await prisma.passwordEntry.createMany({
+    data: [
+      {
+        title: '华为开发者平台',
+        url: 'https://developer.huawei.com',
+        username: 'admin@company.com',
+        password: 'Hw@2025dev!',
+        email: 'admin@company.com',
+        category: 'game',
+        notes: '华为渠道开发者账号，用于SDK接入和游戏提审',
+      },
+      {
+        title: 'OPPO开放平台',
+        url: 'https://open.oppomobile.com',
+        username: 'company_game',
+        password: 'Op@game#2025',
+        category: 'game',
+        notes: 'OPPO游戏开发者平台，用于应用发布和支付配置',
+      },
+      {
+        title: 'vivo游戏开发者',
+        url: 'https://dev.vivo.com.cn',
+        username: 'dev@company.com',
+        password: 'Vivo#dev2025!',
+        category: 'game',
+        notes: 'vivo游戏中心开发者账号',
+      },
+      {
+        title: '小米游戏中心',
+        url: 'https://dev.mi.com',
+        username: 'mi_game_dev',
+        password: 'Mi$game2025dev',
+        category: 'game',
+        notes: '小米开发者平台，游戏发布渠道',
+      },
+      {
+        title: 'B站游戏中心',
+        url: 'https://game.bilibili.com',
+        username: 'bgame_company',
+        password: 'Blgame@2025!',
+        category: 'game',
+        notes: '哔哩哔哩游戏中心开发者后台',
+      },
+      {
+        title: '金山区文档',
+        url: 'https://www.kdocs.cn',
+        username: 'pm@company.com',
+        password: 'Kdocs2025!',
+        category: 'tool',
+        notes: '金山文档企业账号',
+      },
+      {
+        title: '企业邮箱',
+        url: 'https://mail.company.com',
+        username: 'admin@company.com',
+        password: 'Mail@2025#sec',
+        email: 'admin@company.com',
+        category: 'website',
+        notes: '公司企业邮箱管理员账号',
+      },
+      {
+        title: '服务器管理面板',
+        url: 'https://server.company.com:8888',
+        username: 'root',
+        password: 'Srv#root2025!',
+        category: 'server',
+        notes: '游戏服务器管理后台，生产环境',
+      },
+    ],
+  })
+
   console.log('Seed data created successfully!')
   console.log(`- 3 users created`)
   console.log(`- 5 game projects created (with WPS document links)`)
@@ -466,6 +538,7 @@ async function main() {
   console.log(`- 20 task columns created`)
   console.log(`- 24 tasks created`)
   console.log(`- 27 task assignees created`)
+  console.log(`- 8 password entries created`)
 }
 
 main()

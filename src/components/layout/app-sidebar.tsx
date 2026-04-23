@@ -13,6 +13,7 @@ import {
   FileText,
   Search,
   X,
+  KeyRound,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -26,6 +27,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarSeparator,
 } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
@@ -34,6 +36,7 @@ const navItems: { title: string; icon: React.ElementType; view: ViewType }[] = [
   { title: '仪表板', icon: LayoutDashboard, view: 'dashboard' },
   { title: '我的任务', icon: CheckSquare, view: 'my-tasks' },
   { title: '项目列表', icon: FolderKanban, view: 'projects' },
+  { title: '密码管理', icon: KeyRound, view: 'passwords' },
   { title: '任务日历', icon: CalendarDays, view: 'calendar' },
   { title: '团队', icon: Users, view: 'team' },
   { title: '报表', icon: BarChart3, view: 'reports' },
@@ -128,9 +131,9 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarRail />
-      {/* Gradient overlay for depth */}
+      {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 pointer-events-none" />
-      
+
       <SidebarHeader className="p-5 relative">
         <div className="flex items-center gap-3 px-1">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/25">
@@ -212,7 +215,10 @@ export function AppSidebar() {
                     isActive={currentView === item.view}
                     onClick={() => setCurrentView(item.view)}
                     tooltip={item.title}
-                    className="text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 data-[active=true]:bg-emerald-500/15 data-[active=true]:text-emerald-400 data-[active=true]:font-medium rounded-lg mx-1"
+                    className={cn(
+                      'text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 rounded-lg mx-1',
+                      'data-[active=true]:bg-emerald-500/15 data-[active=true]:text-emerald-400 data-[active=true]:font-medium'
+                    )}
                   >
                     <item.icon className="h-[18px] w-[18px]" />
                     <span className="text-[13px]">{item.title}</span>
@@ -222,6 +228,8 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarSeparator className="bg-white/[0.06] mx-4" />
 
         {recentProjects.length > 0 && (
           <SidebarGroup>

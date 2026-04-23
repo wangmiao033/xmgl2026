@@ -27,11 +27,11 @@ export function StatsCard({
     <Card className={cn('shadow-card hover:shadow-card-hover transition-all duration-300 bg-card border-border/50', className)}>
       <CardContent className="p-5 lg:p-6">
         <div className="flex items-start justify-between">
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <p className="text-[13px] font-medium text-muted-foreground">{title}</p>
-            <p className={cn('text-3xl font-bold tracking-tight', valueColor)}>{value}</p>
+            <p className={cn('text-[28px] font-bold tracking-tight leading-none', valueColor)}>{value}</p>
             {description && (
-              <p className="text-[13px] text-muted-foreground leading-relaxed">{description}</p>
+              <p className="text-[13px] text-muted-foreground leading-relaxed mt-2">{description}</p>
             )}
           </div>
           <div className={cn(

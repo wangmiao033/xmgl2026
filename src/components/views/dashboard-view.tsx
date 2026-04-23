@@ -53,7 +53,7 @@ export function DashboardView() {
       <div className="space-y-8">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">仪表板</h1>
-          <p className="text-muted-foreground mt-1">项目概览与数据分析</p>
+          <p className="text-muted-foreground mt-1 text-[15px]">项目概览与数据分析</p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[120px] rounded-xl" />)}
@@ -181,7 +181,7 @@ export function DashboardView() {
       {/* Recent projects */}
       <div>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold">所有项目</h2>
+          <h2 className="text-[18px] font-semibold">所有项目</h2>
           <Button variant="ghost" size="sm"
             className="text-[13px] text-muted-foreground hover:text-foreground"
             onClick={() => setCurrentView('projects')}>
@@ -199,12 +199,12 @@ export function DashboardView() {
 
       {/* Recent tasks */}
       <div>
-        <h2 className="text-lg font-semibold mb-5">最近任务</h2>
+        <h2 className="text-[18px] font-semibold mb-5">最近任务</h2>
         <Card className="shadow-card border-border/50 overflow-hidden">
           <CardContent className="p-0">
             <div className="divide-y divide-border/50">
               {stats.recentTasks.map((task: any) => (
-                <div key={task.id} className="flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors">
+                <div key={task.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors">
                   <div className="flex items-center gap-3.5 min-w-0">
                     <div className={cn('h-2.5 w-2.5 rounded-full shrink-0',
                       task.priority === 'urgent' && 'bg-red-500', task.priority === 'high' && 'bg-orange-500',

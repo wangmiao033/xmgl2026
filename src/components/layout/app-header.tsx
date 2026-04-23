@@ -20,6 +20,7 @@ const viewTitles: Record<string, string> = {
   'my-tasks': '我的任务',
   calendar: '任务日历',
   reports: '数据报表',
+  passwords: '密码管理',
 }
 
 export function AppHeader() {
@@ -33,9 +34,9 @@ export function AppHeader() {
   const parent = getParentView()
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border/60 bg-card/80 backdrop-blur-md px-6 sticky top-0 z-10">
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border/50 bg-card/80 backdrop-blur-md px-6 sticky top-0 z-10">
       <SidebarTrigger className="-ml-2 h-8 w-8" />
-      <div className="h-5 w-px bg-border/80" />
+      <div className="h-5 w-px bg-border/60" />
       <Breadcrumb>
         <BreadcrumbList>
           {parent && (
@@ -57,7 +58,7 @@ export function AppHeader() {
             </>
           )}
           <BreadcrumbItem>
-            <BreadcrumbPage className="font-medium">{viewTitles[currentView] || currentView}</BreadcrumbPage>
+            <BreadcrumbPage className="font-semibold text-[15px]">{viewTitles[currentView] || currentView}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>

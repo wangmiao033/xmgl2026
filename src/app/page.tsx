@@ -11,6 +11,7 @@ import { SettingsView } from '@/components/views/settings-view'
 import { MyTasksView } from '@/components/views/my-tasks-view'
 import { CalendarView } from '@/components/views/calendar-view'
 import { ReportsView } from '@/components/views/reports-view'
+import { PasswordsView } from '@/components/views/passwords-view'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { Toaster } from '@/components/ui/sonner'
 
@@ -23,6 +24,7 @@ const viewComponents: Record<string, React.ComponentType> = {
   'my-tasks': MyTasksView,
   calendar: CalendarView,
   reports: ReportsView,
+  passwords: PasswordsView,
 }
 
 export default function Home() {
@@ -34,8 +36,8 @@ export default function Home() {
       <AppSidebar />
       <SidebarInset>
         <AppHeader />
-        <main className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-[1400px] p-6 lg:p-8">
+        <main className="flex-1 overflow-auto bg-muted/20">
+          <div className="mx-auto max-w-[1440px] p-5 lg:p-8">
             <ViewComponent />
           </div>
         </main>

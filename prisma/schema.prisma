@@ -90,3 +90,18 @@ model TaskAssignee {
 
   @@unique([taskId, userId])
 }
+
+model PasswordEntry {
+  id          String   @id @default(cuid())
+  title       String
+  url         String?
+  username    String?
+  password    String
+  email       String?
+  phone       String?
+  notes       String?
+  category    String   @default("other") // website, game, tool, server, social, other
+  isFavorite  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
