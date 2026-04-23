@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog,
@@ -35,21 +33,29 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   KeyRound,
   Plus,
   Search,
   Eye,
   EyeOff,
   Copy,
-  Star,
   ExternalLink,
-  Globe,
   User,
   Mail,
   Phone,
   Pencil,
   Trash2,
-  Shield,
+  Star,
+  CalendarDays,
+  FileText,
+  Filter,
+  MoreHorizontal,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -69,13 +75,13 @@ interface PasswordEntry {
   updatedAt: string
 }
 
-const categoryConfig: Record<string, { label: string; icon: React.ElementType; className: string; bgClass: string }> = {
-  website: { label: '网站', icon: Globe, className: 'text-blue-600 dark:text-blue-400', bgClass: 'bg-blue-50 dark:bg-blue-500/10' },
-  game: { label: '游戏', icon: KeyRound, className: 'text-violet-600 dark:text-violet-400', bgClass: 'bg-violet-50 dark:bg-violet-500/10' },
-  tool: { label: '工具', icon: Shield, className: 'text-amber-600 dark:text-amber-400', bgClass: 'bg-amber-50 dark:bg-amber-500/10' },
-  server: { label: '服务器', icon: Shield, className: 'text-red-600 dark:text-red-400', bgClass: 'bg-red-50 dark:bg-red-500/10' },
-  social: { label: '社交', icon: User, className: 'text-pink-600 dark:text-pink-400', bgClass: 'bg-pink-50 dark:bg-pink-500/10' },
-  other: { label: '其他', icon: KeyRound, className: 'text-slate-600 dark:text-slate-400', bgClass: 'bg-slate-50 dark:bg-slate-500/10' },
+const categoryConfig: Record<string, { label: string; tagClass: string }> = {
+  website: { label: '网站', tagClass: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400' },
+  game: { label: '游戏', tagClass: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400' },
+  tool: { label: '工具', tagClass: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400' },
+  server: { label: '服务器', tagClass: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400' },
+  social: { label: '社交', tagClass: 'bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-400' },
+  other: { label: '其他', tagClass: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400' },
 }
 
 export function PasswordsView() {
@@ -83,6 +89,7 @@ export function PasswordsView() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [showAllPasswords, setShowAllPasswords] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
 
   // Dialog states
@@ -100,9 +107,6 @@ export function PasswordsView() {
   const [formPhone, setFormPhone] = useState('')
   const [formNotes, setFormNotes] = useState('')
   const [formCategory, setFormCategory] = useState('other')
-
-  // Password visibility
-  const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set())
 
   const fetchEntries = useCallback(() => {
     let cancelled = false
@@ -164,48 +168,32 @@ export function PasswordsView() {
 
     setSubmitLoading(true)
     try {
-      if (editMode && editId) {
-        const res = await fetch(`/api/passwords/${editId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: formTitle.trim(),
-            url: formUrl.trim() || null,
-            username: formUsername.trim() || null,
-            password: formPassword.trim(),
-            email: formEmail.trim() || null,
-            phone: formPhone.trim() || null,
-            notes: formNotes.trim() || null,
-            category: formCategory,
-          }),
-        })
-        if (res.ok) {
-          toast.success('密码已更新')
-          setDialogOpen(false)
-          resetForm()
-          setRefreshKey((k) => k + 1)
-        }
-      } else {
-        const res = await fetch('/api/passwords', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: formTitle.trim(),
-            url: formUrl.trim() || null,
-            username: formUsername.trim() || null,
-            password: formPassword.trim(),
-            email: formEmail.trim() || null,
-            phone: formPhone.trim() || null,
-            notes: formNotes.trim() || null,
-            category: formCategory,
-          }),
-        })
-        if (res.ok) {
-          toast.success('密码已添加')
-          setDialogOpen(false)
-          resetForm()
-          setRefreshKey((k) => k + 1)
-        }
+      const body = {
+        title: formTitle.trim(),
+        url: formUrl.trim() || null,
+        username: formUsername.trim() || null,
+        password: formPassword.trim(),
+        email: formEmail.trim() || null,
+        phone: formPhone.trim() || null,
+        notes: formNotes.trim() || null,
+        category: formCategory,
+      }
+
+      const url = editMode && editId
+        ? `/api/passwords/${editId}`
+        : '/api/passwords'
+
+      const res = await fetch(url, {
+        method: editMode ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (res.ok) {
+        toast.success(editMode ? '密码已更新' : '密码已添加')
+        setDialogOpen(false)
+        resetForm()
+        setRefreshKey((k) => k + 1)
       }
     } catch (error) {
       console.error('Error saving password:', error)
@@ -241,15 +229,6 @@ export function PasswordsView() {
     }
   }
 
-  const togglePasswordVisibility = (id: string) => {
-    setVisiblePasswords((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => {
       toast.success(`${label}已复制`)
@@ -258,466 +237,448 @@ export function PasswordsView() {
     })
   }
 
-  const favoriteEntries = entries.filter((e) => e.isFavorite)
-  const regularEntries = entries.filter((e) => !e.isFavorite)
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    } catch {
+      return dateStr
+    }
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">密码管理</h1>
-          <p className="text-muted-foreground mt-1 text-[15px]">
-            安全存储和管理团队账号密码信息，共 {entries.length} 条记录
-          </p>
-        </div>
-        <Button
-          onClick={openCreateDialog}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          添加密码
-        </Button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="搜索名称、网址、账号、备注..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-10 bg-background"
-          />
-        </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-[140px] h-10 bg-background">
-            <SelectValue placeholder="分类筛选" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部分类</SelectItem>
-            <SelectItem value="website">网站</SelectItem>
-            <SelectItem value="game">游戏</SelectItem>
-            <SelectItem value="tool">工具</SelectItem>
-            <SelectItem value="server">服务器</SelectItem>
-            <SelectItem value="social">社交</SelectItem>
-            <SelectItem value="other">其他</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-52 rounded-xl" />
-          ))}
-        </div>
-      ) : entries.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 mx-auto mb-4">
-            <KeyRound className="h-8 w-8 text-emerald-500" />
+    <TooltipProvider delayDuration={300}>
+      <div className="space-y-5">
+        {/* Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">密码管理</h1>
+            <p className="text-muted-foreground mt-1 text-[15px]">
+              安全存储和管理团队账号密码信息
+            </p>
           </div>
-          <p className="text-lg font-medium">暂无密码记录</p>
-          <p className="text-sm text-muted-foreground mt-1.5">点击上方按钮添加第一条密码记录</p>
+          <Button
+            onClick={openCreateDialog}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm h-10"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            添加密码
+          </Button>
         </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Favorites section */}
-          {favoriteEntries.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  收藏
-                </h2>
-                <span className="text-xs text-muted-foreground">({favoriteEntries.length})</span>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {favoriteEntries.map((entry) => (
-                  <PasswordCard
-                    key={entry.id}
-                    entry={entry}
-                    visible={visiblePasswords.has(entry.id)}
-                    onToggleVisibility={() => togglePasswordVisibility(entry.id)}
-                    onCopy={copyToClipboard}
-                    onEdit={() => openEditDialog(entry)}
-                    onDelete={() => handleDelete(entry.id)}
-                    onToggleFavorite={() => toggleFavorite(entry)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
 
-          {/* Regular entries */}
-          {regularEntries.length > 0 && (
-            <div>
-              {favoriteEntries.length > 0 && (
-                <div className="flex items-center gap-2 mb-4">
-                  <KeyRound className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                    全部
-                  </h2>
-                  <span className="text-xs text-muted-foreground">({regularEntries.length})</span>
-                </div>
+        {/* Filters */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="搜索名称、网址、账号、备注..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-9 bg-background"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-full sm:w-[120px] h-9 bg-background">
+                <SelectValue placeholder="分类" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部分类</SelectItem>
+                <SelectItem value="website">网站</SelectItem>
+                <SelectItem value="game">游戏</SelectItem>
+                <SelectItem value="tool">工具</SelectItem>
+                <SelectItem value="server">服务器</SelectItem>
+                <SelectItem value="social">社交</SelectItem>
+                <SelectItem value="other">其他</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn('h-9 px-3 text-[13px]', showAllPasswords && 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/30')}
+              onClick={() => setShowAllPasswords(!showAllPasswords)}
+            >
+              {showAllPasswords ? (
+                <><EyeOff className="mr-1.5 h-3.5 w-3.5" />隐藏密码</>
+              ) : (
+                <><Eye className="mr-1.5 h-3.5 w-3.5" />显示密码</>
               )}
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {regularEntries.map((entry) => (
-                  <PasswordCard
-                    key={entry.id}
-                    entry={entry}
-                    visible={visiblePasswords.has(entry.id)}
-                    onToggleVisibility={() => togglePasswordVisibility(entry.id)}
-                    onCopy={copyToClipboard}
-                    onEdit={() => openEditDialog(entry)}
-                    onDelete={() => handleDelete(entry.id)}
-                    onToggleFavorite={() => toggleFavorite(entry)}
-                  />
-                ))}
+            </Button>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="rounded-xl border border-border/60 bg-card shadow-card overflow-hidden">
+          {loading ? (
+            <div className="space-y-0">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 px-4 py-3">
+                  <Skeleton className="h-4 w-[120px] shrink-0" />
+                  <Skeleton className="h-5 w-[48px] shrink-0 rounded-full" />
+                  <Skeleton className="h-4 w-[180px] shrink-0" />
+                  <Skeleton className="h-4 w-[140px] shrink-0" />
+                  <Skeleton className="h-4 w-[100px] shrink-0" />
+                  <Skeleton className="h-4 w-[90px] shrink-0" />
+                </div>
+              ))}
+            </div>
+          ) : entries.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 mx-auto mb-4">
+                <KeyRound className="h-7 w-7 text-emerald-500" />
+              </div>
+              <p className="text-[15px] font-medium">暂无密码记录</p>
+              <p className="text-[13px] text-muted-foreground mt-1">点击上方按钮添加第一条密码记录</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[13px]">
+                {/* Header */}
+                <thead>
+                  <tr className="border-b border-border/60 bg-muted/40">
+                    <th className="text-left font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[160px]">项目名称</th>
+                    <th className="text-left font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[72px]">分类</th>
+                    <th className="text-left font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[200px]">登录链接</th>
+                    <th className="text-left font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[160px]">账号</th>
+                    <th className="text-left font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[140px]">密码</th>
+                    <th className="text-left font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[120px]">更新日期</th>
+                    <th className="text-left font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap min-w-[120px]">备注</th>
+                    <th className="text-center font-semibold text-muted-foreground px-4 py-3 whitespace-nowrap w-[64px]">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((entry, index) => {
+                    const cat = categoryConfig[entry.category] || categoryConfig.other
+                    return (
+                      <tr
+                        key={entry.id}
+                        className={cn(
+                          'border-b border-border/30 transition-colors group/row hover:bg-emerald-50/40 dark:hover:bg-emerald-500/5',
+                          index % 2 === 1 && 'bg-muted/20'
+                        )}
+                      >
+                        {/* 项目名称 */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <button
+                              onClick={() => toggleFavorite(entry)}
+                              className="shrink-0"
+                            >
+                              <Star className={cn('h-3.5 w-3.5 transition-colors',
+                                entry.isFavorite ? 'text-amber-500 fill-amber-500' : 'text-transparent hover:text-amber-300'
+                              )} />
+                            </button>
+                            <span className="font-medium text-foreground truncate block">{entry.title}</span>
+                          </div>
+                        </td>
+
+                        {/* 分类 */}
+                        <td className="px-4 py-3">
+                          <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium', cat.tagClass)}>
+                            {cat.label}
+                          </span>
+                        </td>
+
+                        {/* 登录链接 */}
+                        <td className="px-4 py-3">
+                          {entry.url ? (
+                            <a
+                              href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:underline truncate min-w-0 transition-colors"
+                            >
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{entry.url.replace(/^https?:\/\//, '')}</span>
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground/50">—</span>
+                          )}
+                        </td>
+
+                        {/* 账号 */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <User className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="truncate text-foreground">{entry.username || entry.email || '—'}</span>
+                            {(entry.username || entry.email) && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    onClick={() => copyToClipboard(entry.username || entry.email || '', '账号')}
+                                    className="shrink-0 opacity-0 group-hover/row:opacity-100 transition-opacity hover:text-emerald-600"
+                                  >
+                                    <Copy className="h-3 w-3 text-muted-foreground" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>复制账号</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 密码 */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <KeyRound className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className={cn('truncate font-mono', showAllPasswords ? 'text-foreground' : 'text-muted-foreground')}>
+                              {showAllPasswords ? entry.password : '••••••••'}
+                            </span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => copyToClipboard(entry.password, '密码')}
+                                  className="shrink-0 opacity-0 group-hover/row:opacity-100 transition-opacity hover:text-emerald-600"
+                                >
+                                  <Copy className="h-3 w-3 text-muted-foreground" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>复制密码</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </td>
+
+                        {/* 更新日期 */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <CalendarDays className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground whitespace-nowrap text-[12px]">
+                              {formatDate(entry.updatedAt)}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* 备注 */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground truncate text-[12px]">{entry.notes || '—'}</span>
+                          </div>
+                        </td>
+
+                        {/* 操作 */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-0.5">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => openEditDialog(entry)}
+                                  className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-muted transition-colors"
+                                >
+                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>编辑</TooltipContent>
+                            </Tooltip>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                                      <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>删除</TooltipContent>
+                                </Tooltip>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>删除密码</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    确定要删除 &ldquo;{entry.title}&rdquo; 的密码记录吗？此操作不可撤销。
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>取消</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(entry.id)} className="bg-red-600 hover:bg-red-700 text-white">
+                                    删除
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Footer */}
+          {!loading && entries.length > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border/60 bg-muted/30">
+              <span className="text-[13px] text-muted-foreground">
+                记录数: <span className="font-semibold text-foreground">{entries.length}</span>
+              </span>
+              <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Star className="h-3 w-3 text-amber-500 fill-amber-500" />
+                  {entries.filter(e => e.isFavorite).length} 个收藏
+                </span>
               </div>
             </div>
           )}
         </div>
-      )}
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
-        <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editMode ? '编辑密码' : '添加密码'}</DialogTitle>
-            <DialogDescription>
-              {editMode ? '修改密码信息' : '填写账号密码信息并保存'}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="pw-title">名称 *</Label>
-              <Input
-                id="pw-title"
-                value={formTitle}
-                onChange={(e) => setFormTitle(e.target.value)}
-                placeholder="例如：华为开发者平台"
-                required
-                className="h-10"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="pw-category">分类</Label>
-                <Select value={formCategory} onValueChange={setFormCategory}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="website">网站</SelectItem>
-                    <SelectItem value="game">游戏</SelectItem>
-                    <SelectItem value="tool">工具</SelectItem>
-                    <SelectItem value="server">服务器</SelectItem>
-                    <SelectItem value="social">社交</SelectItem>
-                    <SelectItem value="other">其他</SelectItem>
-                  </SelectContent>
-                </Select>
+        {/* Create/Edit Dialog */}
+        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm() }}>
+          <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editMode ? '编辑密码' : '添加密码'}</DialogTitle>
+              <DialogDescription>
+                {editMode ? '修改密码信息' : '填写账号密码信息并保存'}
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2 sm:col-span-1">
+                  <Label htmlFor="pw-title">项目名称 *</Label>
+                  <Input
+                    id="pw-title"
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    placeholder="例如：华为开发者平台"
+                    required
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-2 col-span-2 sm:col-span-1">
+                  <Label htmlFor="pw-category">分类</Label>
+                  <Select value={formCategory} onValueChange={setFormCategory}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="website">网站</SelectItem>
+                      <SelectItem value="game">游戏</SelectItem>
+                      <SelectItem value="tool">工具</SelectItem>
+                      <SelectItem value="server">服务器</SelectItem>
+                      <SelectItem value="social">社交</SelectItem>
+                      <SelectItem value="other">其他</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="pw-url">网址</Label>
-                <Input
-                  id="pw-url"
-                  value={formUrl}
-                  onChange={(e) => setFormUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="h-10"
+                <Label htmlFor="pw-url">登录链接</Label>
+                <div className="relative">
+                  <ExternalLink className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    id="pw-url"
+                    value={formUrl}
+                    onChange={(e) => setFormUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="pl-9 h-10"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pw-username">账号</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      id="pw-username"
+                      value={formUsername}
+                      onChange={(e) => setFormUsername(e.target.value)}
+                      placeholder="用户名或账号"
+                      className="pl-9 h-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pw-password">密码 *</Label>
+                  <div className="relative">
+                    <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      id="pw-password"
+                      type="password"
+                      value={formPassword}
+                      onChange={(e) => setFormPassword(e.target.value)}
+                      placeholder="输入密码"
+                      required
+                      className="pl-9 pr-9 h-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = document.getElementById('pw-password') as HTMLInputElement
+                        input.type = input.type === 'password' ? 'text' : 'password'
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pw-email">邮箱</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      id="pw-email"
+                      type="email"
+                      value={formEmail}
+                      onChange={(e) => setFormEmail(e.target.value)}
+                      placeholder="关联邮箱"
+                      className="pl-9 h-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pw-phone">手机号</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      id="pw-phone"
+                      value={formPhone}
+                      onChange={(e) => setFormPhone(e.target.value)}
+                      placeholder="关联手机号"
+                      className="pl-9 h-10"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="pw-notes">备注</Label>
+                <Textarea
+                  id="pw-notes"
+                  value={formNotes}
+                  onChange={(e) => setFormNotes(e.target.value)}
+                  placeholder="添加备注信息..."
+                  rows={2}
+                  className="resize-none"
                 />
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="pw-username">账号</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    id="pw-username"
-                    value={formUsername}
-                    onChange={(e) => setFormUsername(e.target.value)}
-                    placeholder="用户名或账号"
-                    className="pl-9 h-10"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pw-password">密码 *</Label>
-                <div className="relative">
-                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    id="pw-password"
-                    type="password"
-                    value={formPassword}
-                    onChange={(e) => setFormPassword(e.target.value)}
-                    placeholder="输入密码"
-                    required
-                    className="pl-9 pr-9 h-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const input = document.getElementById('pw-password') as HTMLInputElement
-                      input.type = input.type === 'password' ? 'text' : 'password'
-                    }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="pw-email">邮箱</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    id="pw-email"
-                    type="email"
-                    value={formEmail}
-                    onChange={(e) => setFormEmail(e.target.value)}
-                    placeholder="关联邮箱"
-                    className="pl-9 h-10"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pw-phone">手机号</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    id="pw-phone"
-                    value={formPhone}
-                    onChange={(e) => setFormPhone(e.target.value)}
-                    placeholder="关联手机号"
-                    className="pl-9 h-10"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pw-notes">备注</Label>
-              <Textarea
-                id="pw-notes"
-                value={formNotes}
-                onChange={(e) => setFormNotes(e.target.value)}
-                placeholder="添加备注信息..."
-                rows={2}
-                className="resize-none"
-              />
-            </div>
-
-            <DialogFooter className="gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); resetForm() }} className="h-10">
-                取消
-              </Button>
-              <Button
-                type="submit"
-                disabled={submitLoading || !formTitle.trim() || !formPassword.trim()}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white h-10"
-              >
-                {submitLoading ? '保存中...' : editMode ? '保存修改' : '添加密码'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
-
-// Password Card Sub-component
-function PasswordCard({
-  entry,
-  visible,
-  onToggleVisibility,
-  onCopy,
-  onEdit,
-  onDelete,
-  onToggleFavorite,
-}: {
-  entry: PasswordEntry
-  visible: boolean
-  onToggleVisibility: () => void
-  onCopy: (text: string, label: string) => void
-  onEdit: () => void
-  onDelete: () => void
-  onToggleFavorite: () => void
-}) {
-  const cat = categoryConfig[entry.category] || categoryConfig.other
-  const CatIcon = cat.icon
-
-  return (
-    <Card className="shadow-card hover:shadow-card-hover transition-all duration-300 bg-card border-border/50 group overflow-hidden">
-      {/* Top accent bar */}
-      <div className={cn('h-[3px] w-full', entry.category === 'website' && 'bg-gradient-to-r from-blue-400 to-blue-500',
-        entry.category === 'game' && 'bg-gradient-to-r from-violet-400 to-violet-500',
-        entry.category === 'tool' && 'bg-gradient-to-r from-amber-400 to-amber-500',
-        entry.category === 'server' && 'bg-gradient-to-r from-red-400 to-red-500',
-        entry.category === 'social' && 'bg-gradient-to-r from-pink-400 to-pink-500',
-        entry.category === 'other' && 'bg-gradient-to-r from-slate-300 to-slate-400',
-      )} />
-
-      <CardHeader className="pb-3 pt-4 px-5">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg shrink-0', cat.bgClass)}>
-              <CatIcon className={cn('h-4 w-4', cat.className)} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <CardTitle className="text-[14px] font-semibold leading-snug line-clamp-1">{entry.title}</CardTitle>
-              {entry.url && (
-                <p className="text-[12px] text-muted-foreground truncate mt-0.5">{entry.url}</p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={onToggleFavorite}
-              className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
-            >
-              <Star className={cn('h-3.5 w-3.5 transition-colors',
-                entry.isFavorite ? 'text-amber-500 fill-amber-500' : 'text-muted-foreground/40 hover:text-amber-400'
-              )} />
-            </button>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="pt-0 px-5 pb-5 space-y-2.5">
-        {/* Username */}
-        {entry.username && (
-          <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/30 px-3 py-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="text-[13px] font-medium truncate">{entry.username}</span>
-            </div>
-            <button
-              onClick={() => onCopy(entry.username!, '账号')}
-              className="h-6 w-6 rounded-md flex items-center justify-center hover:bg-muted transition-colors shrink-0"
-              title="复制账号"
-            >
-              <Copy className="h-3 w-3 text-muted-foreground" />
-            </button>
-          </div>
-        )}
-
-        {/* Password */}
-        <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/30 px-3 py-2">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <KeyRound className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <span className="text-[13px] font-mono font-medium truncate">
-              {visible ? entry.password : '••••••••'}
-            </span>
-          </div>
-          <div className="flex items-center gap-0.5 shrink-0">
-            <button
-              onClick={onToggleVisibility}
-              className="h-6 w-6 rounded-md flex items-center justify-center hover:bg-muted transition-colors"
-              title={visible ? '隐藏密码' : '显示密码'}
-            >
-              {visible ? (
-                <EyeOff className="h-3 w-3 text-muted-foreground" />
-              ) : (
-                <Eye className="h-3 w-3 text-muted-foreground" />
-              )}
-            </button>
-            <button
-              onClick={() => onCopy(entry.password, '密码')}
-              className="h-6 w-6 rounded-md flex items-center justify-center hover:bg-muted transition-colors"
-              title="复制密码"
-            >
-              <Copy className="h-3 w-3 text-muted-foreground" />
-            </button>
-          </div>
-        </div>
-
-        {/* Extra info */}
-        <div className="flex items-center gap-3 text-[12px] text-muted-foreground">
-          {entry.email && (
-            <div className="flex items-center gap-1 min-w-0">
-              <Mail className="h-3 w-3 shrink-0" />
-              <span className="truncate">{entry.email}</span>
-            </div>
-          )}
-          {entry.phone && (
-            <div className="flex items-center gap-1 min-w-0">
-              <Phone className="h-3 w-3 shrink-0" />
-              <span className="truncate">{entry.phone}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Notes */}
-        {entry.notes && (
-          <p className="text-[12px] text-muted-foreground leading-relaxed line-clamp-2 border-t border-border/40 pt-2.5 mt-1">
-            {entry.notes}
-          </p>
-        )}
-
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className={cn('text-[11px] px-2 py-0.5 font-medium', cat.bgClass, cat.className)}>
-              {cat.label}
-            </Badge>
-            {entry.url && (
-              <a
-                href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[12px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ExternalLink className="h-3 w-3" />
-                打开
-              </a>
-            )}
-          </div>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-            <button
-              onClick={onEdit}
-              className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
-              title="编辑"
-            >
-              <Pencil className="h-3 w-3 text-muted-foreground" />
-            </button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                  title="删除"
-                  onClick={(e) => e.stopPropagation()}
+              <DialogFooter className="gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); resetForm() }} className="h-10">
+                  取消
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={submitLoading || !formTitle.trim() || !formPassword.trim()}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white h-10"
                 >
-                  <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>删除密码</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    确定要删除 &ldquo;{entry.title}&rdquo; 的密码记录吗？此操作不可撤销。
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
-                  <AlertDialogAction onClick={onDelete} className="bg-red-600 hover:bg-red-700 text-white">
-                    删除
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+                  {submitLoading ? '保存中...' : editMode ? '保存修改' : '添加密码'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </TooltipProvider>
   )
 }
