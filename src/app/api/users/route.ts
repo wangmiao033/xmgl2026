@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { getAllOnlineUsers } from '@/app/api/auth/session/route'
 
 export async function GET() {
   try {
@@ -25,12 +26,6 @@ export async function GET() {
       projectCount: user.projects?.length || 0,
     }))
 
-    // Get completed task counts per user
-    const completedTaskCounts = await db.task.groupBy({
-      by: ['status'],
-      _count: true,
-    })
-
     // For each user, count completed tasks
     for (let i = 0; i < usersWithStats.length; i++) {
       const completedCount = await db.taskAssignee.count({
@@ -44,8 +39,22 @@ export async function GET() {
       usersWithStats[i].completedTasks = completedCount
     }
 
-    // Remove projects array to keep response clean
-    const result = usersWithStats.map(({ projects, ...rest }) => rest)
+    // Get online users to enrich response
+    const onlineUsers = getAllOnlineUsers()
+    const onlineUserIds = new Set(onlineUsers.map((u) => u.userId))
+
+    // Build a map of userId -> lastActivity for online status
+    const onlineActivityMap = new Map<string, number>()
+    onlineUsers.forEach((u) => {
+      onlineActivityMap.set(u.userId, u.lastActivity)
+    })
+
+    // Remove projects array and add isOnline + lastActivity
+    const result = usersWithStats.map(({ projects, ...rest }) => ({
+      ...rest,
+      isOnline: onlineUserIds.has(rest.id),
+      lastActivity: onlineActivityMap.get(rest.id) || null,
+    }))
 
     return NextResponse.json(result)
   } catch (error) {

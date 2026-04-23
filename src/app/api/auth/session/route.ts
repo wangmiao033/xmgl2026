@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // In-memory token store (simple approach for internal tool)
 // In production, use Redis or database sessions
-const sessions = new Map<string, { userId: string; email: string; name: string; role: string; avatar: string | null; createdAt: number }>()
+const sessions = new Map<string, { userId: string; email: string; name: string; role: string; avatar: string | null; createdAt: number; lastActivity: number }>()
 
 export interface SessionData {
   userId: string
@@ -11,6 +11,17 @@ export interface SessionData {
   role: string
   avatar: string | null
 }
+
+export interface OnlineUserInfo {
+  userId: string
+  email: string
+  name: string
+  role: string
+  avatar: string | null
+  lastActivity: number
+}
+
+const ONLINE_THRESHOLD = 2 * 60 * 1000 // 2 minutes
 
 /**
  * Validate a session token and return session data, or null if invalid.
@@ -36,7 +47,18 @@ export function validateToken(token: string): SessionData | null {
  * Register a new session.
  */
 export function createSession(token: string, data: { userId: string; email: string; name: string; role: string; avatar: string | null }) {
-  sessions.set(token, { ...data, createdAt: Date.now() })
+  const now = Date.now()
+  sessions.set(token, { ...data, createdAt: now, lastActivity: now })
+}
+
+/**
+ * Update session activity timestamp (heartbeat).
+ */
+export function updateSessionActivity(token: string) {
+  const session = sessions.get(token)
+  if (session) {
+    session.lastActivity = Date.now()
+  }
 }
 
 /**
@@ -44,6 +66,33 @@ export function createSession(token: string, data: { userId: string; email: stri
  */
 export function removeSession(token: string) {
   sessions.delete(token)
+}
+
+/**
+ * Get all online users (active within last 2 minutes).
+ * Returns the most recent session per userId.
+ */
+export function getAllOnlineUsers(): OnlineUserInfo[] {
+  const now = Date.now()
+  const userMap = new Map<string, OnlineUserInfo>()
+
+  sessions.forEach((session) => {
+    if (now - session.lastActivity <= ONLINE_THRESHOLD) {
+      const existing = userMap.get(session.userId)
+      if (!existing || session.lastActivity > existing.lastActivity) {
+        userMap.set(session.userId, {
+          userId: session.userId,
+          email: session.email,
+          name: session.name,
+          role: session.role,
+          avatar: session.avatar,
+          lastActivity: session.lastActivity,
+        })
+      }
+    }
+  })
+
+  return Array.from(userMap.values())
 }
 
 // GET /api/auth/session - Check current session
@@ -60,6 +109,9 @@ export async function GET(request: NextRequest) {
     response.cookies.set('session_token', '', { maxAge: 0, path: '/' })
     return response
   }
+
+  // Update lastActivity on each GET request (heartbeat)
+  updateSessionActivity(token)
 
   return NextResponse.json({ authenticated: true, user: session })
 }

@@ -25,3 +25,27 @@ Stage Summary:
 - Session stored via HTTP-only cookie + server-side in-memory store
 - 7-day session duration
 - All pages behind login wall
+
+---
+Task ID: 3
+Agent: main + fullstack-developer
+Task: 员工协作优化 — 在线状态追踪 + 团队管理增强 + Header在线面板
+
+Work Log:
+- Enhanced `src/app/api/auth/session/route.ts` — added `lastActivity` field to sessions, created `updateSessionActivity()`, `getAllOnlineUsers()` functions, GET request auto-updates heartbeat (2min threshold)
+- Created `src/app/api/users/online/route.ts` — dedicated API endpoint returning online users list
+- Updated `src/app/api/users/route.ts` — enriched user list with `isOnline` boolean and `lastActivity` timestamp
+- Created `src/hooks/use-online-users.ts` — custom React hook, polls `/api/users/online` every 30 seconds
+- Enhanced `src/components/views/team-view.tsx` — added 4 stat cards (online members, total tasks, completion rate, project coverage), online status indicator dots on user cards, "最近活跃" time display, 30s auto-refresh
+- Enhanced `src/components/layout/app-header.tsx` — added online members indicator (green pulse dot + "N人在线"), clickable dropdown panel showing online members with avatars/names/roles
+- Updated `src/app/page.tsx` — added 60-second heartbeat interval to keep session active
+- Build verified: `npx next build` successful, all 15 routes registered including `/api/users/online`
+- API tested: `/api/users` returns `isOnline` and `lastActivity` fields, `/api/users/online` returns live online user list
+
+Stage Summary:
+- Online status tracking fully implemented with heartbeat mechanism
+- Team view shows real-time online/offline status with green indicator dots
+- Header displays online member count with expandable panel
+- 2-minute inactivity threshold for online detection
+- 30-second frontend polling for online user updates
+- 60-second heartbeat to maintain active session

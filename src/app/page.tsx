@@ -69,6 +69,15 @@ export default function Home() {
     checkSession()
   }, [checkSession])
 
+  // Heartbeat: keep session active every 60 seconds
+  useEffect(() => {
+    if (!user) return
+    const heartbeat = setInterval(() => {
+      fetch('/api/auth/session').catch(() => {})
+    }, 60000)
+    return () => clearInterval(heartbeat)
+  }, [user])
+
   const handleLogin = useCallback(async (userData: UserInfo) => {
     // Register session in server memory
     await fetch('/api/auth/session', {

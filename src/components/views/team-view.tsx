@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -23,9 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { UserPlus, FolderKanban, Shield, Crown, User } from 'lucide-react'
+import { UserPlus, Shield, Crown, User, Users, CheckCircle2, FolderKanban, Activity } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useOnlineUsers } from '@/hooks/use-online-users'
 
 interface User {
   id: string
@@ -38,12 +39,26 @@ interface User {
   }
   completedTasks: number
   projectCount: number
+  isOnline: boolean
+  lastActivity: number | null
 }
 
 const roleConfig: Record<string, { label: string; className: string; icon: React.ElementType; color: string }> = {
   admin: { label: '管理员', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', icon: Crown, color: 'from-red-500 to-rose-500' },
   manager: { label: '经理', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', icon: Shield, color: 'from-emerald-500 to-teal-500' },
   member: { label: '成员', className: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400', icon: User, color: 'from-sky-500 to-blue-500' },
+}
+
+function formatLastActivity(lastActivity: number | null): string {
+  if (!lastActivity) return '离线'
+  const diff = Date.now() - lastActivity
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return '刚刚活跃'
+  if (minutes < 60) return `${minutes}分钟前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}小时前`
+  const days = Math.floor(hours / 24)
+  return `${days}天前`
 }
 
 export function TeamView() {
@@ -54,8 +69,9 @@ export function TeamView() {
   const [newName, setNewName] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newRole, setNewRole] = useState('member')
+  const { onlineUsers, onlineCount } = useOnlineUsers()
 
-  const fetchUsers = () => {
+  const fetchUsers = useCallback(() => {
     fetch('/api/users')
       .then((res) => res.json())
       .then((data) => {
@@ -63,11 +79,17 @@ export function TeamView() {
         setLoading(false)
       })
       .catch(() => setLoading(false))
-  }
+  }, [])
 
   useEffect(() => {
     fetchUsers()
-  }, [])
+  }, [fetchUsers])
+
+  // Periodically refresh user data to sync online status
+  useEffect(() => {
+    const interval = setInterval(fetchUsers, 30000)
+    return () => clearInterval(interval)
+  }, [fetchUsers])
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -100,12 +122,21 @@ export function TeamView() {
     }
   }
 
+  // Collaboration stats
+  const totalTasks = users.reduce((sum, u) => sum + u._count.tasks, 0)
+  const completedTasks = users.reduce((sum, u) => sum + u.completedTasks, 0)
+  const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+  const projectsCovered = users.filter((u) => u.projectCount > 0).length
+  const projectCoverageRate = users.length > 0 ? Math.round((projectsCovered / users.length) * 100) : 0
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">团队管理</h1>
-          <p className="text-muted-foreground mt-1 text-[15px]">查看和管理团队成员，共 {users.length} 人</p>
+          <p className="text-muted-foreground mt-1 text-[15px]">
+            查看和管理团队成员，共 {users.length} 人，当前在线 {onlineCount} 人
+          </p>
         </div>
         <Button
           onClick={() => setAddDialogOpen(true)}
@@ -116,10 +147,90 @@ export function TeamView() {
         </Button>
       </div>
 
+      {/* Statistics Cards */}
+      {!loading && users.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Online users */}
+          <Card className="border-border/40 shadow-card overflow-hidden">
+            <div className="h-[2px] bg-gradient-to-r from-emerald-500 to-teal-500" />
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/15">
+                  <Activity className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-[13px] text-muted-foreground">在线成员</p>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{onlineCount}</span>
+                    <span className="text-[13px] text-muted-foreground">/ {users.length}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Total tasks */}
+          <Card className="border-border/40 shadow-card overflow-hidden">
+            <div className="h-[2px] bg-gradient-to-r from-sky-500 to-blue-500" />
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-100 dark:bg-sky-500/15">
+                  <Users className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+                </div>
+                <div>
+                  <p className="text-[13px] text-muted-foreground">总任务数</p>
+                  <div className="flex items-baseline">
+                    <span className="text-2xl font-bold tabular-nums">{totalTasks}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Task completion rate */}
+          <Card className="border-border/40 shadow-card overflow-hidden">
+            <div className="h-[2px] bg-gradient-to-r from-violet-500 to-purple-500" />
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-500/15">
+                  <CheckCircle2 className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-[13px] text-muted-foreground">任务完成率</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold tabular-nums">{taskCompletionRate}</span>
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Project coverage */}
+          <Card className="border-border/40 shadow-card overflow-hidden">
+            <div className="h-[2px] bg-gradient-to-r from-amber-500 to-orange-500" />
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-500/15">
+                  <FolderKanban className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-[13px] text-muted-foreground">项目覆盖率</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold tabular-nums">{projectCoverageRate}</span>
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {loading ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-[220px] rounded-xl" />
+            <Skeleton key={i} className="h-[240px] rounded-xl" />
           ))}
         </div>
       ) : (
@@ -146,9 +257,23 @@ export function TeamView() {
                       <div className={cn('absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-gradient-to-r flex items-center justify-center shadow-sm', role.color)}>
                         <RoleIcon className="h-3 w-3 text-white" />
                       </div>
+                      {/* Online status indicator */}
+                      <div className={cn(
+                        'absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-card',
+                        user.isOnline
+                          ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
+                          : 'bg-gray-300 dark:bg-gray-600'
+                      )} />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-[15px]">{user.name}</h3>
+                      <h3 className="font-semibold text-[15px] flex items-center justify-center gap-2">
+                        {user.name}
+                        {user.isOnline && (
+                          <span className="inline-flex items-center text-[11px] font-normal text-emerald-600 dark:text-emerald-400">
+                            在线
+                          </span>
+                        )}
+                      </h3>
                       <p className="text-[13px] text-muted-foreground mt-0.5">{user.email}</p>
                     </div>
                     <Badge variant="secondary" className={cn('text-[11px] px-2.5 py-0.5 font-medium', role.className)}>
@@ -169,6 +294,16 @@ export function TeamView() {
                         <p className="text-xl font-bold tabular-nums text-sky-600 dark:text-sky-400">{user.projectCount}</p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">参与项目</p>
                       </div>
+                    </div>
+                    {/* Last activity */}
+                    <div className="w-full pt-1 border-t border-border/30">
+                      <p className={cn(
+                        'text-[12px] flex items-center justify-center gap-1',
+                        user.isOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+                      )}>
+                        <Activity className="h-3 w-3" />
+                        最近活跃：{formatLastActivity(user.lastActivity)}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
