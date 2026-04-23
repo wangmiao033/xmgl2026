@@ -10,7 +10,6 @@ import {
   Users,
   BarChart3,
   Settings,
-  Gamepad2,
   FileText,
   Search,
   X,
@@ -78,56 +77,34 @@ export function AppSidebar() {
     return () => { cancelled = true }
   }, [])
 
-  // Derived: clear results when query is empty
   const effectiveResults = !searchQuery.trim() ? [] : searchResults
 
-  // Search with debounce
   useEffect(() => {
     if (!searchQuery.trim()) return
-
     const timer = setTimeout(async () => {
       try {
         const projectsRes = await fetch('/api/projects')
         const projects = await projectsRes.json()
         const query = searchQuery.toLowerCase()
         const results: SearchResult[] = []
-
-        // Search projects
         for (const p of projects) {
           if (p.name.toLowerCase().includes(query)) {
-            results.push({
-              type: 'project',
-              id: p.id,
-              title: p.name,
-              subtitle: '项目',
-            })
+            results.push({ type: 'project', id: p.id, title: p.name, subtitle: '项目' })
           }
-          // Search tasks in project
           if (p.tasks) {
             for (const t of p.tasks) {
               if (t.title.toLowerCase().includes(query)) {
-                results.push({
-                  type: 'task',
-                  id: t.id,
-                  projectId: p.id,
-                  title: t.title,
-                  subtitle: `任务 · ${p.name}`,
-                })
+                results.push({ type: 'task', id: t.id, projectId: p.id, title: t.title, subtitle: `任务 · ${p.name}` })
               }
             }
           }
         }
-
-        setSearchResults(results.slice(0, 10))
-      } catch {
-        // ignore
-      }
+        setSearchResults(results.slice(0, 8))
+      } catch { /* ignore */ }
     }, 300)
-
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  // Close search on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
@@ -149,61 +126,59 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-slate-700/50">
+    <Sidebar collapsible="icon" className="border-r-0">
       <SidebarRail />
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3 px-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 text-white font-bold text-sm">
+      {/* Gradient overlay for depth */}
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 pointer-events-none" />
+      
+      <SidebarHeader className="p-5 relative">
+        <div className="flex items-center gap-3 px-1">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/25">
             PM
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-semibold text-slate-100">项目管理</span>
-            <span className="text-xs text-slate-400">企业内部管理系统</span>
+            <span className="text-[15px] font-semibold text-slate-50 tracking-tight">项目管理</span>
+            <span className="text-[11px] text-slate-500 mt-0.5">企业内部管理系统</span>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="relative">
         {/* Search */}
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <div ref={searchRef} className="relative px-2">
+          <div ref={searchRef} className="relative px-3">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="搜索项目和任务..."
+                placeholder="搜索项目..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
                   setShowSearch(true)
                 }}
                 onFocus={() => setShowSearch(true)}
-                className="w-full rounded-md bg-slate-800 border border-slate-700 py-1.5 pl-8 pr-8 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+                className="w-full rounded-lg bg-white/[0.06] border border-white/[0.08] py-2 pl-9 pr-8 text-[13px] text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/50 focus:bg-white/[0.08] transition-all"
               />
               {searchQuery && (
                 <button
-                  onClick={() => {
-                    setSearchQuery('')
-                    inputRef.current?.focus()
-                  }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                  onClick={() => { setSearchQuery(''); inputRef.current?.focus() }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
-
-            {/* Search results dropdown */}
             {showSearch && searchQuery.trim() && (
-              <div className="absolute top-full left-2 right-2 mt-1 z-50 rounded-md bg-slate-800 border border-slate-700 shadow-xl max-h-64 overflow-y-auto">
+              <div className="absolute top-full left-3 right-3 mt-1.5 z-50 rounded-xl bg-slate-800/95 backdrop-blur-xl border border-white/[0.08] shadow-float max-h-64 overflow-y-auto">
                 {effectiveResults.length > 0 ? (
-                  <div className="py-1">
+                  <div className="py-1.5">
                     {effectiveResults.map((result) => (
                       <button
                         key={`${result.type}-${result.id}`}
                         onClick={() => handleSearchSelect(result)}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-slate-700/50 transition-colors"
+                        className="w-full flex items-center gap-3 px-3.5 py-2.5 text-left hover:bg-white/[0.06] transition-colors"
                       >
                         {result.type === 'project' ? (
                           <FolderKanban className="h-4 w-4 text-emerald-400 shrink-0" />
@@ -211,18 +186,16 @@ export function AppSidebar() {
                           <CheckSquare className="h-4 w-4 text-sky-400 shrink-0" />
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm text-slate-200 truncate">{result.title}</p>
+                          <p className="text-[13px] text-slate-200 truncate">{result.title}</p>
                           {result.subtitle && (
-                            <p className="text-xs text-slate-500 truncate">{result.subtitle}</p>
+                            <p className="text-[11px] text-slate-500 truncate mt-0.5">{result.subtitle}</p>
                           )}
                         </div>
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <div className="px-3 py-4 text-center text-sm text-slate-500">
-                    未找到匹配结果
-                  </div>
+                  <div className="px-3 py-6 text-center text-[13px] text-slate-500">未找到匹配结果</div>
                 )}
               </div>
             )}
@@ -230,7 +203,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-slate-400">导航菜单</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-slate-500 px-4 text-[11px] uppercase tracking-wider font-medium">导航</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
@@ -239,10 +212,10 @@ export function AppSidebar() {
                     isActive={currentView === item.view}
                     onClick={() => setCurrentView(item.view)}
                     tooltip={item.title}
-                    className="text-slate-300 hover:bg-slate-700/50 hover:text-slate-100 data-[active=true]:bg-emerald-600/20 data-[active=true]:text-emerald-400"
+                    className="text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 data-[active=true]:bg-emerald-500/15 data-[active=true]:text-emerald-400 data-[active=true]:font-medium rounded-lg mx-1"
                   >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
+                    <item.icon className="h-[18px] w-[18px]" />
+                    <span className="text-[13px]">{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -250,10 +223,9 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Recent projects with doc links */}
         {recentProjects.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-slate-400">项目快捷入口</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-slate-500 px-4 text-[11px] uppercase tracking-wider font-medium">快捷入口</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {recentProjects.map((project) => (
@@ -264,13 +236,13 @@ export function AppSidebar() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className={cn(
-                          'peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>svg]:size-4 [&>svg]:shrink-0',
+                          'peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded-lg p-2 text-left outline-hidden transition-all hover:bg-white/[0.06] group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2!',
                           'text-slate-400 hover:text-emerald-400'
                         )}
                         title={`打开 ${project.docName || project.name}`}
                       >
                         <FileText className="h-4 w-4 shrink-0" />
-                        <span className="truncate group-data-[collapsible=icon]:hidden">
+                        <span className="truncate text-[13px] group-data-[collapsible=icon]:hidden">
                           {project.docName || project.name}
                         </span>
                       </a>
@@ -278,10 +250,10 @@ export function AppSidebar() {
                       <SidebarMenuButton
                         onClick={() => navigateToProject(project.id)}
                         tooltip={project.name}
-                        className="text-slate-400 hover:text-slate-200"
+                        className="text-slate-400 hover:text-slate-200 rounded-lg mx-1"
                       >
-                        <Gamepad2 className="h-4 w-4" />
-                        <span className="truncate">{project.name}</span>
+                        <FolderKanban className="h-4 w-4" />
+                        <span className="text-[13px] truncate">{project.name}</span>
                       </SidebarMenuButton>
                     )}
                   </SidebarMenuItem>
@@ -292,16 +264,16 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
-        <div className="flex items-center gap-3 px-2">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-emerald-600/20 text-emerald-400 text-xs">
+      <SidebarFooter className="p-4 relative">
+        <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/[0.04] transition-colors">
+          <Avatar className="h-9 w-9 ring-2 ring-white/10">
+            <AvatarFallback className="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-400 text-sm font-medium">
               张
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-medium text-slate-200">张三</span>
-            <span className="text-xs text-slate-400">管理员</span>
+            <span className="text-[13px] font-medium text-slate-200">张三</span>
+            <span className="text-[11px] text-slate-500">管理员</span>
           </div>
         </div>
       </SidebarFooter>

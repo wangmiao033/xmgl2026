@@ -34,9 +34,11 @@ export default function Home() {
       <AppSidebar />
       <SidebarInset>
         <AppHeader />
-        <div className="flex-1 overflow-auto p-6">
-          <ViewComponent />
-        </div>
+        <main className="flex-1 overflow-auto">
+          <div className="mx-auto max-w-[1400px] p-6 lg:p-8">
+            <ViewComponent />
+          </div>
+        </main>
       </SidebarInset>
       <Toaster />
     </SidebarProvider>

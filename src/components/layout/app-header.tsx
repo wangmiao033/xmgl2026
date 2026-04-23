@@ -2,7 +2,6 @@
 
 import { useAppStore } from '@/stores/app-store'
 import { SidebarTrigger } from '@/components/ui/sidebar'
-import { Separator } from '@/components/ui/separator'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -34,9 +33,9 @@ export function AppHeader() {
   const parent = getParentView()
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
-      <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="mr-2 h-4" />
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border/60 bg-card/80 backdrop-blur-md px-6 sticky top-0 z-10">
+      <SidebarTrigger className="-ml-2 h-8 w-8" />
+      <div className="h-5 w-px bg-border/80" />
       <Breadcrumb>
         <BreadcrumbList>
           {parent && (
@@ -49,6 +48,7 @@ export function AppHeader() {
                     const store = useAppStore.getState()
                     store.setCurrentView(parent.view)
                   }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {parent.title}
                 </BreadcrumbLink>
@@ -57,7 +57,7 @@ export function AppHeader() {
             </>
           )}
           <BreadcrumbItem>
-            <BreadcrumbPage>{viewTitles[currentView] || currentView}</BreadcrumbPage>
+            <BreadcrumbPage className="font-medium">{viewTitles[currentView] || currentView}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
