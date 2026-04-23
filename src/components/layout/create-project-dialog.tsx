@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Plus, Link } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface CreateProjectDialogProps {
   onCreated?: () => void
@@ -72,6 +73,7 @@ export function CreateProjectDialog({ onCreated }: CreateProjectDialogProps) {
       })
 
       if (res.ok) {
+        toast.success('项目创建成功')
         setOpen(false)
         resetForm()
         onCreated?.()

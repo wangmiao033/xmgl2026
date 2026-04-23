@@ -12,11 +12,23 @@ interface StatsCardProps {
     positive: boolean
   }
   className?: string
+  borderColor?: string
+  iconColor?: string
+  iconBg?: string
 }
 
-export function StatsCard({ title, value, description, icon: Icon, className }: StatsCardProps) {
+export function StatsCard({
+  title,
+  value,
+  description,
+  icon: Icon,
+  className,
+  borderColor = 'border-l-emerald-500',
+  iconColor = 'text-emerald-600 dark:text-emerald-400',
+  iconBg = 'bg-emerald-50 dark:bg-emerald-900/20',
+}: StatsCardProps) {
   return (
-    <Card className={cn('', className)}>
+    <Card className={cn('border-l-4', borderColor, className)}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
@@ -26,8 +38,8 @@ export function StatsCard({ title, value, description, icon: Icon, className }: 
               <p className="text-xs text-muted-foreground">{description}</p>
             )}
           </div>
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
-            <Icon className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+          <div className={cn('flex h-12 w-12 items-center justify-center rounded-lg', iconBg)}>
+            <Icon className={cn('h-6 w-6', iconColor)} />
           </div>
         </div>
       </CardContent>

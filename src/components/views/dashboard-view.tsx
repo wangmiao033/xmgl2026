@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import { StatsCard } from '@/components/layout/stats-card'
 import { ProjectCard } from '@/components/layout/project-card'
 import { useAppStore } from '@/stores/app-store'
-import { FolderKanban, ListChecks, CheckCircle2, Users, FileText, ExternalLink } from 'lucide-react'
+import { FolderKanban, ListChecks, CheckCircle2, Users, FileText, ExternalLink, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   BarChart,
@@ -58,7 +59,7 @@ const statusColors: Record<string, string> = {
 }
 
 export function DashboardView() {
-  const { navigateToProject } = useAppStore()
+  const { navigateToProject, setCurrentView } = useAppStore()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -122,35 +123,47 @@ export function DashboardView() {
         <p className="text-muted-foreground">项目概览与数据分析</p>
       </div>
 
-      {/* Stats cards */}
+      {/* Stats cards with colored left borders */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="总项目数"
           value={stats.totalProjects}
           description={`${stats.activeProjects} 个进行中`}
           icon={FolderKanban}
+          borderColor="border-l-emerald-500"
+          iconColor="text-emerald-600 dark:text-emerald-400"
+          iconBg="bg-emerald-50 dark:bg-emerald-900/20"
         />
         <StatsCard
           title="进行中任务"
           value={stats.inProgressTasks}
           description={`共 ${stats.totalTasks} 个任务`}
           icon={ListChecks}
+          borderColor="border-l-sky-500"
+          iconColor="text-sky-600 dark:text-sky-400"
+          iconBg="bg-sky-50 dark:bg-sky-900/20"
         />
         <StatsCard
           title="已完成任务"
           value={stats.completedTasks}
           description={`完成率 ${stats.completionRate}%`}
           icon={CheckCircle2}
+          borderColor="border-l-teal-500"
+          iconColor="text-teal-600 dark:text-teal-400"
+          iconBg="bg-teal-50 dark:bg-teal-900/20"
         />
         <StatsCard
           title="团队成员"
           value={stats.totalUsers}
           description={`${stats.completedProjects} 个项目已完成`}
           icon={Users}
+          borderColor="border-l-violet-500"
+          iconColor="text-violet-600 dark:text-violet-400"
+          iconBg="bg-violet-50 dark:bg-violet-900/20"
         />
       </div>
 
-      {/* Quick document access */}
+      {/* Quick document access - compact */}
       {projectsWithDocs.length > 0 && (
         <Card className="border-emerald-200 dark:border-emerald-800">
           <CardHeader className="pb-3">
@@ -160,25 +173,25 @@ export function DashboardView() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-2 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3">
               {projectsWithDocs.map((project: any) => (
                 <a
                   key={project.id}
                   href={project.docUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-emerald-50 dark:hover:bg-emerald-900/10 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all group"
+                  className="flex items-center gap-2.5 p-2.5 rounded-lg border bg-card hover:bg-emerald-50 dark:hover:bg-emerald-900/10 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all group"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shrink-0">
-                    <FileText className="h-4 w-4" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shrink-0">
+                    <FileText className="h-3.5 w-3.5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                    <p className="text-xs font-medium truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                       {project.docName || project.name}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">{project.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{project.name}</p>
                   </div>
-                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-emerald-500 shrink-0 transition-colors" />
+                  <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-emerald-500 shrink-0 transition-colors" />
                 </a>
               ))}
             </div>
@@ -255,22 +268,35 @@ export function DashboardView() {
         </Card>
       </div>
 
-      {/* Recent projects */}
+      {/* Recent projects - all projects in scrollable grid */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">最近项目</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {stats.recentProjects.map((project: any) => (
-            <ProjectCard
-              key={project.id}
-              project={{
-                ...project,
-                taskCount: project._count?.tasks,
-                memberCount: project._count?.members,
-                members: project.members,
-              }}
-              onClick={() => navigateToProject(project.id)}
-            />
-          ))}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">最近项目</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
+            onClick={() => setCurrentView('projects')}
+          >
+            查看全部
+            <ArrowRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+        <div className="max-h-[500px] overflow-y-auto rounded-lg">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {stats.recentProjects.map((project: any) => (
+              <ProjectCard
+                key={project.id}
+                project={{
+                  ...project,
+                  taskCount: project._count?.tasks,
+                  memberCount: project._count?.members,
+                  members: project.members,
+                }}
+                onClick={() => navigateToProject(project.id)}
+              />
+            ))}
+          </div>
         </div>
       </div>
 

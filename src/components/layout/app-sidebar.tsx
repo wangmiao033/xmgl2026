@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAppStore, type ViewType } from '@/stores/app-store'
 import {
   LayoutDashboard,
@@ -12,6 +12,8 @@ import {
   Settings,
   Gamepad2,
   FileText,
+  Search,
+  X,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -46,9 +48,22 @@ interface QuickProject {
   docName?: string | null
 }
 
+interface SearchResult {
+  type: 'project' | 'task'
+  id: string
+  projectId?: string
+  title: string
+  subtitle?: string
+}
+
 export function AppSidebar() {
   const { currentView, setCurrentView, navigateToProject } = useAppStore()
   const [recentProjects, setRecentProjects] = useState<QuickProject[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [showSearch, setShowSearch] = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -62,6 +77,76 @@ export function AppSidebar() {
       .catch(() => {})
     return () => { cancelled = true }
   }, [])
+
+  // Derived: clear results when query is empty
+  const effectiveResults = !searchQuery.trim() ? [] : searchResults
+
+  // Search with debounce
+  useEffect(() => {
+    if (!searchQuery.trim()) return
+
+    const timer = setTimeout(async () => {
+      try {
+        const projectsRes = await fetch('/api/projects')
+        const projects = await projectsRes.json()
+        const query = searchQuery.toLowerCase()
+        const results: SearchResult[] = []
+
+        // Search projects
+        for (const p of projects) {
+          if (p.name.toLowerCase().includes(query)) {
+            results.push({
+              type: 'project',
+              id: p.id,
+              title: p.name,
+              subtitle: '项目',
+            })
+          }
+          // Search tasks in project
+          if (p.tasks) {
+            for (const t of p.tasks) {
+              if (t.title.toLowerCase().includes(query)) {
+                results.push({
+                  type: 'task',
+                  id: t.id,
+                  projectId: p.id,
+                  title: t.title,
+                  subtitle: `任务 · ${p.name}`,
+                })
+              }
+            }
+          }
+        }
+
+        setSearchResults(results.slice(0, 10))
+      } catch {
+        // ignore
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // Close search on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSearch(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleSearchSelect = (result: SearchResult) => {
+    if (result.type === 'project') {
+      navigateToProject(result.id)
+    } else if (result.projectId) {
+      navigateToProject(result.projectId)
+    }
+    setSearchQuery('')
+    setShowSearch(false)
+  }
 
   return (
     <Sidebar collapsible="icon" className="border-r border-slate-700/50">
@@ -79,6 +164,71 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        {/* Search */}
+        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+          <div ref={searchRef} className="relative px-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="搜索项目和任务..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setShowSearch(true)
+                }}
+                onFocus={() => setShowSearch(true)}
+                className="w-full rounded-md bg-slate-800 border border-slate-700 py-1.5 pl-8 pr-8 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('')
+                    inputRef.current?.focus()
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Search results dropdown */}
+            {showSearch && searchQuery.trim() && (
+              <div className="absolute top-full left-2 right-2 mt-1 z-50 rounded-md bg-slate-800 border border-slate-700 shadow-xl max-h-64 overflow-y-auto">
+                {effectiveResults.length > 0 ? (
+                  <div className="py-1">
+                    {effectiveResults.map((result) => (
+                      <button
+                        key={`${result.type}-${result.id}`}
+                        onClick={() => handleSearchSelect(result)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-slate-700/50 transition-colors"
+                      >
+                        {result.type === 'project' ? (
+                          <FolderKanban className="h-4 w-4 text-emerald-400 shrink-0" />
+                        ) : (
+                          <CheckSquare className="h-4 w-4 text-sky-400 shrink-0" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-slate-200 truncate">{result.title}</p>
+                          {result.subtitle && (
+                            <p className="text-xs text-slate-500 truncate">{result.subtitle}</p>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-3 py-4 text-center text-sm text-slate-500">
+                    未找到匹配结果
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </SidebarGroup>
+
         <SidebarGroup>
           <SidebarGroupLabel className="text-slate-400">导航菜单</SidebarGroupLabel>
           <SidebarGroupContent>

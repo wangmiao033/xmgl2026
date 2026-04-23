@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAppStore } from '@/stores/app-store'
 import { TaskCard } from '@/components/layout/task-card'
 import { CreateTaskDialog } from '@/components/layout/create-task-dialog'
+import { EditTaskDialog } from '@/components/layout/edit-task-dialog'
 import { EditProjectDialog } from '@/components/layout/edit-project-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -22,11 +23,24 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCorners,
+  DragEndEvent,
+  DragStartEvent,
+} from '@dnd-kit/core'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { Plus, ArrowLeft, Trash2, ExternalLink, FileText, Pencil, Gamepad2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 interface TaskAssignee {
   id: string
+  userId: string
   user: {
     id: string
     name: string
@@ -41,6 +55,7 @@ interface Task {
   status: string
   order: number
   dueDate?: string | null
+  columnId?: string | null
   assignees: TaskAssignee[]
 }
 
@@ -95,11 +110,75 @@ const priorityConfig: Record<string, { label: string; className: string }> = {
   urgent: { label: '紧急', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
 }
 
-const columnColors: Record<string, string> = {
+const columnBorderColors: Record<string, string> = {
   '待办': 'border-t-slate-400',
   '进行中': 'border-t-sky-500',
   '审核中': 'border-t-amber-500',
   '已完成': 'border-t-emerald-500',
+}
+
+const columnBgColors: Record<string, string> = {
+  '待办': 'bg-slate-50/50 dark:bg-slate-900/20',
+  '进行中': 'bg-sky-50/50 dark:bg-sky-900/10',
+  '审核中': 'bg-amber-50/50 dark:bg-amber-900/10',
+  '已完成': 'bg-emerald-50/50 dark:bg-emerald-900/10',
+}
+
+const columnTitleToStatus: Record<string, string> = {
+  '待办': 'todo',
+  '进行中': 'in_progress',
+  '审核中': 'review',
+  '已完成': 'done',
+}
+
+// Draggable wrapper for task cards
+function DraggableTaskCard({ task, onClick }: { task: Task; onClick?: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+    data: { task, columnId: task.columnId },
+  })
+
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={cn(isDragging && 'opacity-50')}
+    >
+      <TaskCard task={task} onClick={onClick} />
+    </div>
+  )
+}
+
+// Droppable column wrapper
+function DroppableColumn({
+  column,
+  children,
+}: {
+  column: TaskColumn
+  children: React.ReactNode
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: column.id,
+    data: { column },
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'transition-colors',
+        isOver && 'ring-2 ring-emerald-400 ring-offset-2 rounded-lg'
+      )}
+    >
+      {children}
+    </div>
+  )
 }
 
 export function ProjectDetailView() {
@@ -107,11 +186,20 @@ export function ProjectDetailView() {
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
+  const [editTaskDialogOpen, setEditTaskDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedColumnId, setSelectedColumnId] = useState<string | undefined>()
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
 
-  useEffect(() => {
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  )
+
+  const fetchProject = useCallback(() => {
     if (!selectedProjectId) return
     let cancelled = false
     fetch(`/api/projects/${selectedProjectId}`)
@@ -126,16 +214,26 @@ export function ProjectDetailView() {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
-  }, [selectedProjectId, refreshKey])
+  }, [selectedProjectId])
+
+  useEffect(() => {
+    fetchProject()
+  }, [selectedProjectId, refreshKey, fetchProject])
 
   const handleAddTask = (columnId: string) => {
     setSelectedColumnId(columnId)
     setTaskDialogOpen(true)
   }
 
+  const handleEditTask = (task: Task) => {
+    setSelectedTask(task)
+    setEditTaskDialogOpen(true)
+  }
+
   const handleDeleteTask = async (taskId: string) => {
     try {
       await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' })
+      toast.success('任务已删除')
       setRefreshKey((k) => k + 1)
     } catch (error) {
       console.error('Error deleting task:', error)
@@ -146,9 +244,65 @@ export function ProjectDetailView() {
     if (!selectedProjectId) return
     try {
       await fetch(`/api/projects/${selectedProjectId}`, { method: 'DELETE' })
+      toast.success('项目已删除')
       setCurrentView('projects')
     } catch (error) {
       console.error('Error deleting project:', error)
+    }
+  }
+
+  const handleTaskCreated = () => {
+    toast.success('任务创建成功')
+    setRefreshKey((k) => k + 1)
+  }
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event
+    if (!project) return
+    // Find the task from all columns
+    const task = project.columns
+      .flatMap((col) => col.tasks)
+      .find((t) => t.id === active.id)
+    if (task) {
+      setActiveTask(task)
+    }
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveTask(null)
+
+    if (!over || !project || active.id === over.id) return
+
+    // Find source task and destination column
+    const sourceTask = project.columns
+      .flatMap((col) => col.tasks)
+      .find((t) => t.id === active.id)
+
+    if (!sourceTask) return
+
+    const destColumn = project.columns.find((col) => col.id === over.id)
+    if (!destColumn || sourceTask.columnId === destColumn.id) return
+
+    // Map column title to status
+    const newStatus = columnTitleToStatus[destColumn.title] || sourceTask.status
+
+    try {
+      const res = await fetch(`/api/tasks/${active.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          columnId: destColumn.id,
+          status: newStatus,
+        }),
+      })
+
+      if (res.ok) {
+        toast.success(`任务已移动到${destColumn.title}`)
+        setRefreshKey((k) => k + 1)
+      }
+    } catch (error) {
+      console.error('Error moving task:', error)
     }
   }
 
@@ -191,6 +345,7 @@ export function ProjectDetailView() {
   const status = statusConfig[project.status] || statusConfig.active
   const priority = priorityConfig[project.priority] || priorityConfig.medium
   const isGame = project.category === 'game'
+  const totalTasks = project.columns.reduce((sum, col) => sum + col.tasks.length, 0)
 
   return (
     <div className="space-y-6">
@@ -322,73 +477,128 @@ export function ProjectDetailView() {
         </CardContent>
       </Card>
 
-      {/* Kanban board */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {project.columns.map((column) => (
-          <Card
-            key={column.id}
-            className={cn(
-              'border-t-4',
-              columnColors[column.title] || 'border-t-slate-400'
-            )}
-          >
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold">
-                  {column.title}
-                  <span className="ml-2 text-xs text-muted-foreground font-normal">
-                    {column.tasks.length}
-                  </span>
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => handleAddTask(column.id)}
+      {/* Kanban board with DnD */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {project.columns.map((column) => {
+            const borderColor = columnBorderColors[column.title] || 'border-t-slate-400'
+            const bgColor = columnBgColors[column.title] || ''
+
+            // Badge color based on column
+            const badgeColor: Record<string, string> = {
+              '待办': 'bg-slate-500',
+              '进行中': 'bg-sky-500',
+              '审核中': 'bg-amber-500',
+              '已完成': 'bg-emerald-500',
+            }
+
+            return (
+              <DroppableColumn key={column.id} column={column}>
+                <Card
+                  className={cn(
+                    'border-t-4',
+                    borderColor,
+                    bgColor
+                  )}
                 >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2 max-h-[400px] overflow-y-auto">
-              {column.tasks.map((task) => (
-                <div key={task.id} className="relative group">
-                  <TaskCard task={task} />
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button className="absolute top-2 right-2 h-6 w-6 rounded-md bg-background/80 dark:bg-card/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border border-border shadow-sm">
-                        <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>删除任务</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          确定要删除任务&quot;{task.title}&quot;吗？
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                        >
-                          删除
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              ))}
-              {column.tasks.length === 0 && (
-                <div className="text-center py-6 text-xs text-muted-foreground">
-                  暂无任务
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                        {column.title}
+                        <Badge className={cn('text-[10px] px-1.5 py-0 text-white', badgeColor[column.title] || 'bg-slate-500')}>
+                          {column.tasks.length}
+                        </Badge>
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                        onClick={() => handleAddTask(column.id)}
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        添加
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      共 {column.tasks.length} 个任务
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-2 max-h-[400px] overflow-y-auto">
+                    {column.tasks.map((task) => (
+                      <div key={task.id} className="relative group">
+                        <DraggableTaskCard
+                          task={task}
+                          onClick={() => handleEditTask(task)}
+                        />
+                        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            className="h-6 w-6 rounded-md bg-background/80 dark:bg-card/80 flex items-center justify-center border border-border shadow-sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleEditTask(task)
+                            }}
+                          >
+                            <Pencil className="h-3 w-3 text-muted-foreground hover:text-emerald-500" />
+                          </button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                className="h-6 w-6 rounded-md bg-background/80 dark:bg-card/80 flex items-center justify-center border border-border shadow-sm"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>删除任务</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  确定要删除任务&quot;{task.title}&quot;吗？
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>取消</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteTask(task.id)}
+                                  className="bg-red-600 hover:bg-red-700 text-white"
+                                >
+                                  删除
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    ))}
+                    {column.tasks.length === 0 && (
+                      <div className="text-center py-6 text-xs text-muted-foreground">
+                        暂无任务
+                      </div>
+                    )}
+                  </CardContent>
+                  {/* Column footer summary */}
+                  <div className="px-4 py-2 border-t text-[10px] text-muted-foreground">
+                    {column.tasks.length} / {totalTasks} 任务
+                  </div>
+                </Card>
+              </DroppableColumn>
+            )
+          })}
+        </div>
+
+        <DragOverlay>
+          {activeTask ? (
+            <div className="w-72 opacity-80 rotate-3">
+              <TaskCard task={activeTask} />
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       {/* Create task dialog */}
       <CreateTaskDialog
@@ -397,13 +607,29 @@ export function ProjectDetailView() {
         projectId={selectedProjectId}
         columns={project.columns}
         defaultColumnId={selectedColumnId}
-        onCreated={() => setRefreshKey((k) => k + 1)}
+        onCreated={handleTaskCreated}
+      />
+
+      {/* Edit task dialog */}
+      <EditTaskDialog
+        open={editTaskDialogOpen}
+        onOpenChange={setEditTaskDialogOpen}
+        task={selectedTask}
+        projectId={selectedProjectId}
+        columns={project.columns}
+        onUpdated={() => setRefreshKey((k) => k + 1)}
       />
 
       {/* Edit project dialog */}
       <EditProjectDialog
         open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
+        onOpenChange={(open) => {
+          setEditDialogOpen(open)
+          if (!open) {
+            toast.success('项目信息已更新')
+            setRefreshKey((k) => k + 1)
+          }
+        }}
         projectId={selectedProjectId}
         onUpdated={() => setRefreshKey((k) => k + 1)}
       />

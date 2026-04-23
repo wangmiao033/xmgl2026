@@ -8,18 +8,37 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { title, description, priority, status, columnId, dueDate } = body
+    const { title, description, priority, status, columnId, dueDate, assigneeIds } = body
+
+    // Update task basic fields
+    const updateData: Record<string, unknown> = {}
+    if (title !== undefined) updateData.title = title
+    if (description !== undefined) updateData.description = description
+    if (priority !== undefined) updateData.priority = priority
+    if (status !== undefined) updateData.status = status
+    if (columnId !== undefined) updateData.columnId = columnId || null
+    if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null
+
+    // Handle assignee updates
+    if (assigneeIds !== undefined) {
+      // First delete existing assignees
+      await db.taskAssignee.deleteMany({
+        where: { taskId: id },
+      })
+
+      // Create new assignees if any
+      if (assigneeIds && assigneeIds.length > 0) {
+        updateData.assignees = {
+          create: assigneeIds.map((userId: string) => ({
+            userId,
+          })),
+        }
+      }
+    }
 
     const task = await db.task.update({
       where: { id },
-      data: {
-        ...(title !== undefined && { title }),
-        ...(description !== undefined && { description }),
-        ...(priority !== undefined && { priority }),
-        ...(status !== undefined && { status }),
-        ...(columnId !== undefined && { columnId: columnId || null }),
-        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
-      },
+      data: updateData,
       include: {
         assignees: {
           include: {
