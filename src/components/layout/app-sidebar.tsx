@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useAppStore, type ViewType } from '@/stores/app-store'
 import {
   LayoutDashboard,
@@ -9,6 +10,8 @@ import {
   Users,
   BarChart3,
   Settings,
+  Gamepad2,
+  FileText,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -21,8 +24,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
 } from '@/components/ui/sidebar'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { cn } from '@/lib/utils'
 
 const navItems: { title: string; icon: React.ElementType; view: ViewType }[] = [
   { title: '仪表板', icon: LayoutDashboard, view: 'dashboard' },
@@ -34,11 +39,33 @@ const navItems: { title: string; icon: React.ElementType; view: ViewType }[] = [
   { title: '设置', icon: Settings, view: 'settings' },
 ]
 
+interface QuickProject {
+  id: string
+  name: string
+  docUrl?: string | null
+  docName?: string | null
+}
+
 export function AppSidebar() {
-  const { currentView, setCurrentView } = useAppStore()
+  const { currentView, setCurrentView, navigateToProject } = useAppStore()
+  const [recentProjects, setRecentProjects] = useState<QuickProject[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/projects?limit=5')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) {
+          setRecentProjects(data.slice(0, 5))
+        }
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   return (
     <Sidebar collapsible="icon" className="border-r border-slate-700/50">
+      <SidebarRail />
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3 px-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 text-white font-bold text-sm">
@@ -72,6 +99,47 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Recent projects with doc links */}
+        {recentProjects.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-slate-400">项目快捷入口</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {recentProjects.map((project) => (
+                  <SidebarMenuItem key={project.id}>
+                    {project.docUrl ? (
+                      <a
+                        href={project.docUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          'peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>svg]:size-4 [&>svg]:shrink-0',
+                          'text-slate-400 hover:text-emerald-400'
+                        )}
+                        title={`打开 ${project.docName || project.name}`}
+                      >
+                        <FileText className="h-4 w-4 shrink-0" />
+                        <span className="truncate group-data-[collapsible=icon]:hidden">
+                          {project.docName || project.name}
+                        </span>
+                      </a>
+                    ) : (
+                      <SidebarMenuButton
+                        onClick={() => navigateToProject(project.id)}
+                        tooltip={project.name}
+                        className="text-slate-400 hover:text-slate-200"
+                      >
+                        <Gamepad2 className="h-4 w-4" />
+                        <span className="truncate">{project.name}</span>
+                      </SidebarMenuButton>
+                    )}
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4">

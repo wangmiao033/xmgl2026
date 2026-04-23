@@ -25,6 +25,9 @@ model Project {
   description String?
   status      String          @default("active") // active, paused, completed, archived
   priority    String          @default("medium") // low, medium, high, urgent
+  category    String          @default("other") // game, tool, website, other
+  docUrl      String?
+  docName     String?
   startDate   DateTime?
   endDate     DateTime?
   progress    Int             @default(0) // 0-100

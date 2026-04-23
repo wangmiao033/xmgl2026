@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { StatsCard } from '@/components/layout/stats-card'
 import { ProjectCard } from '@/components/layout/project-card'
 import { useAppStore } from '@/stores/app-store'
-import { FolderKanban, ListChecks, CheckCircle2, Users } from 'lucide-react'
+import { FolderKanban, ListChecks, CheckCircle2, Users, FileText, ExternalLink } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -63,13 +63,19 @@ export function DashboardView() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
     fetch('/api/dashboard/stats')
       .then((res) => res.json())
       .then((data) => {
-        setStats(data)
-        setLoading(false)
+        if (!cancelled) {
+          setStats(data)
+          setLoading(false)
+        }
       })
-      .catch(() => setLoading(false))
+      .catch(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
   }, [])
 
   if (loading) {
@@ -106,6 +112,9 @@ export function DashboardView() {
     { name: '低', value: stats.tasksByPriority.low, fill: priorityColors.low },
   ]
 
+  // Projects with document links
+  const projectsWithDocs = stats.recentProjects.filter((p: any) => p.docUrl)
+
   return (
     <div className="space-y-6">
       <div>
@@ -140,6 +149,42 @@ export function DashboardView() {
           icon={Users}
         />
       </div>
+
+      {/* Quick document access */}
+      {projectsWithDocs.length > 0 && (
+        <Card className="border-emerald-200 dark:border-emerald-800">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-emerald-500" />
+              <CardTitle className="text-base">在线文档快捷入口</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {projectsWithDocs.map((project: any) => (
+                <a
+                  key={project.id}
+                  href={project.docUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-emerald-50 dark:hover:bg-emerald-900/10 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all group"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 shrink-0">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                      {project.docName || project.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{project.name}</p>
+                  </div>
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-emerald-500 shrink-0 transition-colors" />
+                </a>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -213,7 +258,7 @@ export function DashboardView() {
       {/* Recent projects */}
       <div>
         <h2 className="text-lg font-semibold mb-4">最近项目</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {stats.recentProjects.map((project: any) => (
             <ProjectCard
               key={project.id}

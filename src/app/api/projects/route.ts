@@ -40,7 +40,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name, description, status, priority, startDate, endDate } = body
+    const { name, description, status, priority, category, docUrl, docName, startDate, endDate } = body
 
     if (!name) {
       return NextResponse.json({ error: '项目名称不能为空' }, { status: 400 })
@@ -52,6 +52,9 @@ export async function POST(request: Request) {
         description: description || null,
         status: status || 'active',
         priority: priority || 'medium',
+        category: category || 'other',
+        docUrl: docUrl || null,
+        docName: docName || null,
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
         columns: {

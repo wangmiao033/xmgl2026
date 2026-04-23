@@ -58,7 +58,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, description, status, priority, startDate, endDate, progress } = body
+    const { name, description, status, priority, category, docUrl, docName, startDate, endDate, progress } = body
 
     const project = await db.project.update({
       where: { id },
@@ -67,6 +67,9 @@ export async function PUT(
         ...(description !== undefined && { description }),
         ...(status !== undefined && { status }),
         ...(priority !== undefined && { priority }),
+        ...(category !== undefined && { category }),
+        ...(docUrl !== undefined && { docUrl }),
+        ...(docName !== undefined && { docName }),
         ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
         ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
         ...(progress !== undefined && { progress }),

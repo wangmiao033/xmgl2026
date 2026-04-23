@@ -1,92 +1,25 @@
-# Work Log - 企业内部项目管理系统
+---
+Task ID: 1
+Agent: main
+Task: 优化项目管理网站 - 添加WPS在线文档链接支持
 
-## Date: 2026-04-23
+Work Log:
+- 分析现有项目代码结构，制定优化方案
+- 更新 Prisma Schema：Project 模型增加 docUrl、docName、category 三个字段
+- 运行 db:push 同步数据库结构
+- 重写种子数据，替换为用户提供的 5 个真实游戏项目（含 WPS 文档链接）
+- 更新 API 路由：POST /api/projects 和 PUT /api/projects/[id] 支持新字段
+- 重写 project-card.tsx：游戏项目显示彩色顶部条 + Gamepad2 图标 + 文档链接按钮
+- 重写 create-project-dialog.tsx：新增「在线文档链接」区域（文档名称+URL），默认类型为"游戏项目"
+- 新建 edit-project-dialog.tsx：支持编辑项目所有字段（状态、进度、文档链接等）
+- 重写 project-detail-view.tsx：文档链接以醒目的绿色虚线卡片展示 + 编辑按钮
+- 重写 dashboard-view.tsx：新增「在线文档快捷入口」卡片区域
+- 重写 projects-view.tsx：新增分类筛选（游戏/工具/网站/其他）
+- 重写 app-sidebar.tsx：侧边栏底部展示项目快捷入口，有文档的直接跳转
+- 运行 lint 检查通过，开发服务器正常运行
 
-## Summary
-Built a comprehensive company internal project management website from scratch using Next.js 16 with App Router, TypeScript, Tailwind CSS 4, and shadcn/ui. The application features a sidebar navigation layout with 8 distinct views, all implemented within the single `/` route using Zustand for client-side state management.
-
-## What was built
-
-### Database Schema (Prisma/SQLite)
-- **6 models**: User, Project, ProjectMember, TaskColumn, Task, TaskAssignee
-- Full relational schema with proper indexes and cascade delete rules
-- Schema pushed and seeded with demo data (3 users, 4 projects, 15 tasks, 16 columns)
-
-### API Routes (10 endpoints)
-- `GET /api/projects` - List all projects with task/member counts
-- `POST /api/projects` - Create new project (with default task columns)
-- `GET /api/projects/[id]` - Project detail with columns, tasks, members
-- `PUT /api/projects/[id]` - Update project
-- `DELETE /api/projects/[id]` - Delete project
-- `POST /api/projects/[id]/tasks` - Create task with assignees
-- `PUT /api/tasks/[id]` - Update task
-- `DELETE /api/tasks/[id]` - Delete task
-- `GET /api/users` - List all users
-- `GET /api/dashboard/stats` - Dashboard statistics
-
-### Views (8 views)
-1. **仪表板 (Dashboard)** - Stats cards, task status/priority charts, recent projects/tasks
-2. **项目列表 (Projects)** - Searchable/filterable project grid with create dialog
-3. **项目详情 (Project Detail)** - Kanban board with 4 columns, task CRUD, delete project
-4. **团队管理 (Team)** - Team member cards with role badges and task counts
-5. **我的任务 (My Tasks)** - Tasks grouped by project with status/priority filters
-6. **任务日历 (Calendar)** - Monthly calendar view showing tasks by due date
-7. **数据报表 (Reports)** - Charts for project progress, task distribution, trends
-8. **系统设置 (Settings)** - Company info, notification preferences, theme toggle
-
-### Layout Components (7 components)
-- `AppSidebar` - Dark sidebar with navigation, logo, user profile
-- `AppHeader` - Breadcrumb navigation with sidebar trigger
-- `CreateProjectDialog` - Project creation form with validation
-- `CreateTaskDialog` - Task creation with column selection and assignee picking
-- `TaskCard` - Kanban task card with priority badge, assignees, due date
-- `ProjectCard` - Project card with progress bar, status, member avatars
-- `StatsCard` - Reusable statistics card
-
-### Architecture
-- **Zustand store** (`src/stores/app-store.ts`) for view navigation state
-- **View switching** via client-side state (single `/` route)
-- **ThemeProvider** via `next-themes` for dark mode support
-- **Responsive design** with mobile sidebar (Sheet component)
-
-## Files Created
-```
-prisma/schema.prisma (updated)
-prisma/seed.ts
-src/stores/app-store.ts
-src/app/layout.tsx (updated)
-src/app/page.tsx (rewritten)
-src/app/api/projects/route.ts
-src/app/api/projects/[id]/route.ts
-src/app/api/projects/[id]/tasks/route.ts
-src/app/api/tasks/[id]/route.ts
-src/app/api/users/route.ts
-src/app/api/dashboard/stats/route.ts
-src/components/layout/app-sidebar.tsx
-src/components/layout/app-header.tsx
-src/components/layout/create-project-dialog.tsx
-src/components/layout/create-task-dialog.tsx
-src/components/layout/task-card.tsx
-src/components/layout/project-card.tsx
-src/components/layout/stats-card.tsx
-src/components/views/dashboard-view.tsx
-src/components/views/projects-view.tsx
-src/components/views/project-detail-view.tsx
-src/components/views/team-view.tsx
-src/components/views/settings-view.tsx
-src/components/views/my-tasks-view.tsx
-src/components/views/calendar-view.tsx
-src/components/views/reports-view.tsx
-```
-
-## Issues Encountered
-- **React 19 lint rule**: `react-hooks/set-state-in-effect` flagged synchronous `setState` calls inside `useEffect`. Fixed by inlining fetch calls with proper cleanup flags instead of wrapper functions.
-- No other issues - build compiles successfully, no runtime errors in dev log.
-
-## Design Decisions
-- Emerald/teal accent color palette (no indigo/blue)
-- Dark sidebar (`bg-slate-900`) with light text
-- All UI text in Chinese
-- Recharts for data visualization
-- Priority color system: red(urgent), orange(high), sky(medium), slate(low)
-- Status color system: emerald(active), amber(paused), teal(completed), gray(archived)
+Stage Summary:
+- 数据库新增 3 个字段：docUrl、docName、category
+- 种子数据包含 5 个游戏项目 + 24 个任务 + WPS 文档链接
+- 前端全面升级：项目卡片、新建/编辑弹窗、详情页、仪表板、侧边栏均支持文档链接
+- 所有 UI 文本为中文

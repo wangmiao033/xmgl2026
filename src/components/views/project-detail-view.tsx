@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAppStore } from '@/stores/app-store'
 import { TaskCard } from '@/components/layout/task-card'
 import { CreateTaskDialog } from '@/components/layout/create-task-dialog'
+import { EditProjectDialog } from '@/components/layout/edit-project-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -21,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Plus, ArrowLeft, Trash2 } from 'lucide-react'
+import { Plus, ArrowLeft, Trash2, ExternalLink, FileText, Pencil, Gamepad2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface TaskAssignee {
@@ -66,6 +67,9 @@ interface ProjectDetail {
   description?: string | null
   status: string
   priority: string
+  category: string
+  docUrl?: string | null
+  docName?: string | null
   progress: number
   startDate?: string | null
   endDate?: string | null
@@ -103,6 +107,7 @@ export function ProjectDetailView() {
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [taskDialogOpen, setTaskDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedColumnId, setSelectedColumnId] = useState<string | undefined>()
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -185,6 +190,7 @@ export function ProjectDetailView() {
 
   const status = statusConfig[project.status] || statusConfig.active
   const priority = priorityConfig[project.priority] || priorityConfig.medium
+  const isGame = project.category === 'game'
 
   return (
     <div className="space-y-6">
@@ -198,11 +204,15 @@ export function ProjectDetailView() {
       </button>
 
       {/* Project header */}
-      <Card>
+      <Card className="overflow-hidden">
+        {isGame && (
+          <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+        )}
         <CardContent className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-2 flex-1">
               <div className="flex items-center gap-3 flex-wrap">
+                {isGame && <Gamepad2 className="h-5 w-5 text-emerald-500" />}
                 <h1 className="text-2xl font-bold">{project.name}</h1>
                 <Badge variant="secondary" className={status.className}>
                   {status.label}
@@ -214,7 +224,7 @@ export function ProjectDetailView() {
               {project.description && (
                 <p className="text-muted-foreground">{project.description}</p>
               )}
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                 <span>{project._count.tasks} 个任务</span>
                 <span>{project._count.members} 名成员</span>
                 {project.startDate && (
@@ -225,31 +235,41 @@ export function ProjectDetailView() {
                 )}
               </div>
             </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="text-red-500 hover:text-red-600">
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  删除项目
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>确认删除</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    确定要删除项目"{project.name}"吗？此操作不可撤销，所有相关任务也将被删除。
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDeleteProject}
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                  >
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditDialogOpen(true)}
+              >
+                <Pencil className="h-4 w-4 mr-1" />
+                编辑
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-red-500 hover:text-red-600">
+                    <Trash2 className="h-4 w-4 mr-1" />
                     删除
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>确认删除</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      确定要删除项目&quot;{project.name}&quot;吗？此操作不可撤销，所有相关任务也将被删除。
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteProject}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      删除
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
 
           {/* Progress */}
@@ -274,6 +294,31 @@ export function ProjectDetailView() {
               ))}
             </div>
           </div>
+
+          {/* Document Link - Prominent */}
+          {project.docUrl && (
+            <div className="mt-5 pt-5 border-t">
+              <a
+                href={project.docUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-4 rounded-lg border-2 border-dashed border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-900/10 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all group"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500 text-white shrink-0">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400 group-hover:underline">
+                    {project.docName || '打开在线文档'}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {project.docUrl}
+                  </p>
+                </div>
+                <ExternalLink className="h-4 w-4 text-emerald-500 shrink-0" />
+              </a>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -319,7 +364,7 @@ export function ProjectDetailView() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>删除任务</AlertDialogTitle>
                         <AlertDialogDescription>
-                          确定要删除任务"{task.title}"吗？
+                          确定要删除任务&quot;{task.title}&quot;吗？
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -353,6 +398,14 @@ export function ProjectDetailView() {
         columns={project.columns}
         defaultColumnId={selectedColumnId}
         onCreated={() => setRefreshKey((k) => k + 1)}
+      />
+
+      {/* Edit project dialog */}
+      <EditProjectDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        projectId={selectedProjectId}
+        onUpdated={() => setRefreshKey((k) => k + 1)}
       />
     </div>
   )
