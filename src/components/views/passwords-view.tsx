@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, Fragment } from 'react'
+import { useEffect, useState, useCallback, Fragment, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -89,7 +89,7 @@ const categoryConfig: Record<string, { label: string; color: string; bg: string;
 }
 
 export function PasswordsView() {
-  const [entries, setEntries] = useState<PasswordEntry[]>([])
+  const [allEntries, setAllEntries] = useState<PasswordEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -117,39 +117,60 @@ export function PasswordsView() {
   // Expanded row for notes
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
 
-  const fetchEntries = useCallback(() => {
-    let cancelled = false
+  // Only fetch all entries once from server (not on every search/filter change)
+  const fetchAllEntries = useCallback(() => {
     setLoading(true)
-    const params = new URLSearchParams()
-    if (search) params.set('search', search)
-    if (categoryFilter !== 'all') params.set('category', categoryFilter)
-    fetch(`/api/passwords?${params.toString()}`)
+    fetch('/api/passwords')
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled && Array.isArray(data)) {
-          const sorted = [...data].sort((a, b) => {
-            if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1
-            if (sortField === 'title') {
-              return sortDir === 'asc' ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title)
-            }
-            if (sortField === 'category') {
-              return sortDir === 'asc' ? a.category.localeCompare(b.category) : b.category.localeCompare(a.category)
-            }
-            return sortDir === 'asc'
-              ? new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
-              : new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          })
-          setEntries(sorted)
-        }
+        if (Array.isArray(data)) setAllEntries(data)
         setLoading(false)
       })
       .catch(() => setLoading(false))
-    return () => { cancelled = true }
-  }, [search, categoryFilter, refreshKey, sortField, sortDir])
+  }, [])
 
   useEffect(() => {
-    fetchEntries()
-  }, [fetchEntries])
+    fetchAllEntries()
+  }, [fetchAllEntries, refreshKey])
+
+  // All filtering, searching, and sorting is done purely in the browser - instant!
+  const entries = useMemo(() => {
+    let filtered = allEntries
+
+    // Category filter
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(e => e.category === categoryFilter)
+    }
+
+    // Search filter (fuzzy match across multiple fields)
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      filtered = filtered.filter(e =>
+        (e.title && e.title.toLowerCase().includes(q)) ||
+        (e.url && e.url.toLowerCase().includes(q)) ||
+        (e.username && e.username.toLowerCase().includes(q)) ||
+        (e.email && e.email.toLowerCase().includes(q)) ||
+        (e.phone && e.phone.toLowerCase().includes(q)) ||
+        (e.notes && e.notes.toLowerCase().includes(q))
+      )
+    }
+
+    // Sort
+    const sorted = [...filtered].sort((a, b) => {
+      if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1
+      if (sortField === 'title') {
+        return sortDir === 'asc' ? a.title.localeCompare(b.title, 'zh') : b.title.localeCompare(a.title, 'zh')
+      }
+      if (sortField === 'category') {
+        return sortDir === 'asc' ? a.category.localeCompare(b.category) : b.category.localeCompare(a.category)
+      }
+      return sortDir === 'asc'
+        ? new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
+        : new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    })
+
+    return sorted
+  }, [allEntries, search, categoryFilter, sortField, sortDir])
 
   const resetForm = () => {
     setFormTitle(''); setFormUrl(''); setFormUsername(''); setFormPassword('')
