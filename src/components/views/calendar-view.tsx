@@ -28,6 +28,13 @@ const priorityColors: Record<string, string> = {
   low: 'bg-slate-400',
 }
 
+const priorityBgColors: Record<string, string> = {
+  urgent: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
+  high: 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400',
+  medium: 'bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400',
+  low: 'bg-slate-50 dark:bg-slate-500/10 text-slate-600 dark:text-slate-400',
+}
+
 export function CalendarView() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
@@ -63,19 +70,13 @@ export function CalendarView() {
 
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1))
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1))
-  const today = () => setCurrentDate(new Date())
+  const goToday = () => setCurrentDate(new Date())
 
   const getTasksForDate = (day: number, isCurrentMonth: boolean) => {
     const date = new Date(year, month, day)
     return tasks.filter((task) => {
       if (!task.dueDate) return false
       const taskDate = new Date(task.dueDate)
-      if (!isCurrentMonth) {
-        // Check prev/next month
-        const adjustedDate = new Date(year, month < 0 ? 11 : month > 11 ? 0 : month, day)
-        if (month < 0) adjustedDate.setFullYear(year - 1)
-        if (month > 11) adjustedDate.setFullYear(year + 1)
-      }
       return (
         taskDate.getFullYear() === date.getFullYear() &&
         taskDate.getMonth() === date.getMonth() &&
@@ -85,21 +86,18 @@ export function CalendarView() {
   }
 
   const isToday = (day: number) => {
-    const today = new Date()
-    return today.getFullYear() === year && today.getMonth() === month && today.getDate() === day
+    const todayDate = new Date()
+    return todayDate.getFullYear() === year && todayDate.getMonth() === month && todayDate.getDate() === day
   }
 
   const calendarDays: { day: number; isCurrentMonth: boolean }[] = []
 
-  // Previous month days
   for (let i = firstDay - 1; i >= 0; i--) {
     calendarDays.push({ day: daysInPrevMonth - i, isCurrentMonth: false })
   }
-  // Current month days
   for (let i = 1; i <= daysInMonth; i++) {
     calendarDays.push({ day: i, isCurrentMonth: true })
   }
-  // Next month days
   const remaining = 42 - calendarDays.length
   for (let i = 1; i <= remaining; i++) {
     calendarDays.push({ day: i, isCurrentMonth: false })
@@ -111,24 +109,24 @@ export function CalendarView() {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold">任务日历</h1>
-        <p className="text-muted-foreground">查看任务截止日期</p>
+        <h1 className="text-2xl font-bold tracking-tight">任务日历</h1>
+        <p className="text-muted-foreground mt-1 text-[15px]">查看任务截止日期与排期</p>
       </div>
 
-      <Card>
-        <CardHeader className="pb-2">
+      <Card className="shadow-card border-border/40 overflow-hidden">
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">{monthName}</CardTitle>
+            <CardTitle className="text-[16px] font-semibold">{monthName}</CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={prevMonth}>
+              <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={prevMonth}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="sm" onClick={today}>
+              <Button variant="outline" size="sm" onClick={goToday} className="h-8 px-3 rounded-lg text-[13px]">
                 今天
               </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={nextMonth}>
+              <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={nextMonth}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -138,12 +136,15 @@ export function CalendarView() {
           {loading ? (
             <Skeleton className="h-[500px] rounded-lg" />
           ) : (
-            <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
+            <div className="grid grid-cols-7 gap-px bg-border/50 rounded-xl overflow-hidden shadow-inner">
               {/* Weekday headers */}
-              {WEEKDAYS.map((day) => (
+              {WEEKDAYS.map((day, index) => (
                 <div
                   key={day}
-                  className="bg-muted p-2 text-center text-xs font-medium text-muted-foreground"
+                  className={cn(
+                    'bg-muted/80 py-2.5 text-center text-[12px] font-semibold uppercase tracking-wider',
+                    (index === 0 || index === 6) ? 'text-red-400 dark:text-red-500/70' : 'text-muted-foreground'
+                  )}
                 >
                   {day}
                 </div>
@@ -151,37 +152,46 @@ export function CalendarView() {
               {/* Calendar days */}
               {calendarDays.map((item, index) => {
                 const dayTasks = item.isCurrentMonth ? getTasksForDate(item.day, true) : []
+                const today = item.isCurrentMonth && isToday(item.day)
+                const isWeekend = (index % 7 === 0 || index % 7 === 6) && item.isCurrentMonth
                 return (
                   <div
                     key={index}
                     className={cn(
-                      'bg-background min-h-[80px] p-1.5',
-                      !item.isCurrentMonth && 'opacity-40'
+                      'bg-card min-h-[85px] p-1.5 transition-colors hover:bg-muted/30',
+                      !item.isCurrentMonth && 'opacity-30',
+                      isWeekend && 'bg-muted/20',
+                      today && 'bg-emerald-50/50 dark:bg-emerald-500/5'
                     )}
                   >
                     <div
                       className={cn(
-                        'text-xs font-medium mb-1',
-                        item.isCurrentMonth && isToday(item.day)
-                          ? 'h-6 w-6 rounded-full bg-emerald-600 text-white flex items-center justify-center'
-                          : 'text-muted-foreground'
+                        'text-[12px] font-medium mb-1.5 flex items-center justify-center',
+                        today
+                          ? 'h-6 w-6 rounded-full bg-emerald-600 text-white shadow-sm animate-pulse-glow'
+                          : isWeekend
+                            ? 'text-red-400 dark:text-red-500/60'
+                            : 'text-muted-foreground'
                       )}
                     >
                       {item.day}
                     </div>
                     <div className="space-y-0.5">
-                      {dayTasks.slice(0, 2).map((task) => (
+                      {dayTasks.slice(0, 3).map((task) => (
                         <div
                           key={task.id}
-                          className="flex items-center gap-1 text-[10px] leading-tight"
+                          className={cn(
+                            'flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] leading-tight font-medium truncate',
+                            priorityBgColors[task.priority] || priorityBgColors.low
+                          )}
                         >
                           <div className={cn('h-1.5 w-1.5 rounded-full shrink-0', priorityColors[task.priority])} />
                           <span className="truncate">{task.title}</span>
                         </div>
                       ))}
-                      {dayTasks.length > 2 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          +{dayTasks.length - 2} 更多
+                      {dayTasks.length > 3 && (
+                        <span className="text-[10px] text-muted-foreground px-1.5 font-medium">
+                          +{dayTasks.length - 3} 更多
                         </span>
                       )}
                     </div>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { StatsCard } from '@/components/layout/stats-card'
 import { ProjectCard } from '@/components/layout/project-card'
 import { useAppStore } from '@/stores/app-store'
-import { FolderKanban, ListChecks, CheckCircle2, Users, FileText, ExternalLink, ArrowRight } from 'lucide-react'
+import { FolderKanban, ListChecks, CheckCircle2, Users, FileText, ExternalLink, ArrowRight, Sparkles, TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -38,6 +38,17 @@ export function DashboardView() {
   const { navigateToProject, setCurrentView } = useAppStore()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [greeting, setGreeting] = useState('')
+
+  useEffect(() => {
+    const hour = new Date().getHours()
+    if (hour < 6) setGreeting('夜深了')
+    else if (hour < 9) setGreeting('早上好')
+    else if (hour < 12) setGreeting('上午好')
+    else if (hour < 14) setGreeting('中午好')
+    else if (hour < 18) setGreeting('下午好')
+    else setGreeting('晚上好')
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -50,11 +61,8 @@ export function DashboardView() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">仪表板</h1>
-          <p className="text-muted-foreground mt-1 text-[15px]">项目概览与数据分析</p>
-        </div>
+      <div className="space-y-8 animate-fade-in">
+        <Skeleton className="h-[120px] rounded-2xl" />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[120px] rounded-xl" />)}
         </div>
@@ -80,11 +88,24 @@ export function DashboardView() {
 
   const projectsWithDocs = stats.recentProjects.filter((p: any) => p.docUrl)
 
+  const todayDate = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">仪表板</h1>
-        <p className="text-muted-foreground mt-1 text-[15px]">项目概览与数据分析</p>
+    <div className="space-y-8 animate-fade-in">
+      {/* Welcome Banner */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 p-6 lg:p-8 text-white shadow-elevated">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
+        <div className="absolute bottom-0 left-1/2 w-48 h-48 bg-white/5 rounded-full translate-y-1/2" />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="h-5 w-5 text-emerald-200" />
+            <span className="text-emerald-100 text-[14px] font-medium">{todayDate}</span>
+          </div>
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">{greeting}，张三</h1>
+          <p className="text-emerald-100/80 mt-2 text-[15px] max-w-lg">
+            当前有 <span className="font-semibold text-white">{stats.activeProjects}</span> 个项目进行中，{stats.inProgressTasks} 个任务待处理，完成率 {stats.completionRate}%
+          </p>
+        </div>
       </div>
 
       {/* Stats */}
@@ -101,12 +122,12 @@ export function DashboardView() {
 
       {/* Documents */}
       {projectsWithDocs.length > 0 && (
-        <Card className="shadow-card border-border/50 overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400" />
+        <Card className="shadow-card border-border/40 overflow-hidden">
+          <div className="h-[2.5px] bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400" />
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/15">
-                <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-500/15 dark:to-teal-500/15 shadow-sm">
+                <FileText className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
                 <CardTitle className="text-[15px] font-semibold">在线文档</CardTitle>
@@ -118,16 +139,16 @@ export function DashboardView() {
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {projectsWithDocs.map((project: any) => (
                 <a key={project.id} href={project.docUrl} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3.5 rounded-xl border border-border/50 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-card-hover bg-card transition-all group"
+                  className="flex items-center gap-3.5 p-4 rounded-xl border border-border/40 hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-card-hover bg-card/80 transition-all group"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-500/20 dark:to-teal-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-500/20 dark:to-teal-500/20 text-emerald-600 dark:text-emerald-400 shrink-0 shadow-sm">
                     <FileText className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-medium truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{project.docName || project.name}</p>
-                    <p className="text-[12px] text-muted-foreground truncate">{project.name}</p>
+                    <p className="text-[12px] text-muted-foreground truncate mt-0.5">{project.name}</p>
                   </div>
-                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/50 group-hover:text-emerald-500 shrink-0 transition-colors" />
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-emerald-500 shrink-0 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </a>
               ))}
             </div>
@@ -137,9 +158,13 @@ export function DashboardView() {
 
       {/* Charts */}
       <div className="grid gap-5 lg:grid-cols-2">
-        <Card className="shadow-card border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-[15px] font-semibold">任务状态分布</CardTitle>
+        <Card className="shadow-card border-border/40 overflow-hidden">
+          <div className="h-[2.5px] bg-gradient-to-r from-sky-400 to-sky-500" />
+          <CardHeader className="pb-2 pt-5">
+            <CardTitle className="text-[15px] font-semibold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-sky-500" />
+              任务状态分布
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[260px]">
@@ -158,9 +183,13 @@ export function DashboardView() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-card border-border/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-[15px] font-semibold">任务优先级分布</CardTitle>
+        <Card className="shadow-card border-border/40 overflow-hidden">
+          <div className="h-[2.5px] bg-gradient-to-r from-amber-400 to-orange-400" />
+          <CardHeader className="pb-2 pt-5">
+            <CardTitle className="text-[15px] font-semibold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-amber-500" />
+              任务优先级分布
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[260px]">
@@ -200,11 +229,11 @@ export function DashboardView() {
       {/* Recent tasks */}
       <div>
         <h2 className="text-[18px] font-semibold mb-5">最近任务</h2>
-        <Card className="shadow-card border-border/50 overflow-hidden">
+        <Card className="shadow-card border-border/40 overflow-hidden">
           <CardContent className="p-0">
-            <div className="divide-y divide-border/50">
+            <div className="divide-y divide-border/40">
               {stats.recentTasks.map((task: any) => (
-                <div key={task.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors">
+                <div key={task.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors group/task">
                   <div className="flex items-center gap-3.5 min-w-0">
                     <div className={cn('h-2.5 w-2.5 rounded-full shrink-0',
                       task.priority === 'urgent' && 'bg-red-500', task.priority === 'high' && 'bg-orange-500',
@@ -215,7 +244,7 @@ export function DashboardView() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2.5 shrink-0 ml-4">
-                    <Badge variant="secondary" className={cn('text-[11px] px-2 py-0.5 font-medium',
+                    <Badge variant="secondary" className={cn('text-[11px] px-2.5 py-0.5 font-medium',
                       task.status === 'done' && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
                       task.status === 'in_progress' && 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400',
                       task.status === 'review' && 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
@@ -224,9 +253,9 @@ export function DashboardView() {
                       {task.status === 'done' ? '已完成' : task.status === 'in_progress' ? '进行中' : task.status === 'review' ? '审核中' : '待办'}
                     </Badge>
                     {task.assignees?.length > 0 && (
-                      <div className="flex -space-x-1">
+                      <div className="flex -space-x-1.5 opacity-0 group-hover/task:opacity-100 transition-opacity">
                         {task.assignees.slice(0, 2).map((a: any) => (
-                          <div key={a.id} className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] text-muted-foreground font-medium border-2 border-card">
+                          <div key={a.id} className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] text-muted-foreground font-medium border-2 border-card shadow-sm">
                             {a.user.name.charAt(0)}
                           </div>
                         ))}

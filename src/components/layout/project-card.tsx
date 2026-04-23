@@ -53,28 +53,28 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
 
   return (
     <Card
-      className="cursor-pointer transition-all duration-300 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 bg-card border-border/50 group relative overflow-hidden"
+      className="cursor-pointer transition-all duration-300 shadow-card hover:shadow-card-hover hover:-translate-y-1 bg-card border-border/40 group relative overflow-hidden"
       onClick={onClick}
     >
       {isGame && (
-        <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400" />
+        <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400" />
       )}
 
+      {/* Priority indicator dot */}
+      <div className="absolute top-4 right-4">
+        <div className={cn('h-2.5 w-2.5 rounded-full shadow-sm', priority.dotColor)} />
+      </div>
+
       <CardHeader className={cn('pb-3', isGame && 'pt-6')}>
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            {isGame && (
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/15 shrink-0">
-                <Gamepad2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-            )}
-            <CardTitle className="text-[15px] font-semibold line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors leading-snug">
-              {project.name}
-            </CardTitle>
-          </div>
-          <Badge variant="secondary" className={cn('text-[11px] px-2 py-0.5 shrink-0 font-medium', status.className)}>
-            {status.label}
-          </Badge>
+        <div className="flex items-center gap-2.5 min-w-0 pr-6">
+          {isGame && (
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-500/15 dark:to-teal-500/15 shrink-0 shadow-sm">
+              <Gamepad2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+          )}
+          <CardTitle className="text-[15px] font-semibold line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors leading-snug">
+            {project.name}
+          </CardTitle>
         </div>
         {project.description && (
           <p className="text-[13px] text-muted-foreground line-clamp-2 mt-1.5 leading-relaxed">{project.description}</p>
@@ -83,20 +83,18 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
 
       <CardContent className="pt-0 space-y-4">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <div className={cn('h-2 w-2 rounded-full', priority.dotColor)} />
-            <span className={cn('text-[11px] font-medium', priority.className.split(' ')[1])}>
-              {priority.label}优先级
-            </span>
-          </div>
-          <div className="h-3 w-px bg-border" />
-          <span className="text-[13px] text-muted-foreground">
-            {project.taskCount ?? 0} 个任务
+          <Badge variant="secondary" className={cn('text-[11px] px-2 py-0.5 font-medium', status.className)}>
+            {status.label}
+          </Badge>
+          <div className="h-3 w-px bg-border/60" />
+          <span className="text-[12px] font-medium text-muted-foreground">
+            {priority.label}优先级
           </span>
-          <div className="h-3 w-px bg-border" />
-          <span className="text-[13px] text-muted-foreground">
-            {project.memberCount ?? 0} 人
-          </span>
+        </div>
+
+        <div className="flex items-center gap-4 text-[13px] text-muted-foreground">
+          <span>{project.taskCount ?? 0} 个任务</span>
+          <span>{project.memberCount ?? 0} 人</span>
         </div>
 
         <div className="space-y-2">
@@ -107,10 +105,11 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
           <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
             <div
               className={cn(
-                'h-full rounded-full transition-all duration-500',
+                'h-full rounded-full transition-all duration-700 ease-out',
                 project.progress >= 80 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' :
                 project.progress >= 50 ? 'bg-gradient-to-r from-sky-400 to-sky-500' :
-                'bg-gradient-to-r from-amber-400 to-amber-500'
+                project.progress >= 25 ? 'bg-gradient-to-r from-amber-400 to-amber-500' :
+                'bg-gradient-to-r from-red-300 to-red-400'
               )}
               style={{ width: `${project.progress}%` }}
             />

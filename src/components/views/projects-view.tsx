@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search } from 'lucide-react'
+import { Search, Filter } from 'lucide-react'
 
 interface Project {
   id: string
@@ -68,76 +68,88 @@ export function ProjectsView() {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">项目列表</h1>
-          <p className="text-muted-foreground">管理所有项目，共 {projects.length} 个</p>
+          <h1 className="text-2xl font-bold tracking-tight">项目列表</h1>
+          <p className="text-muted-foreground mt-1 text-[15px]">
+            管理所有项目，共 {projects.length} 个
+            {filteredProjects.length !== projects.length && (
+              <span className="ml-1">（筛选显示 {filteredProjects.length} 个）</span>
+            )}
+          </p>
         </div>
         <CreateProjectDialog onCreated={() => setRefreshKey((k) => k + 1)} />
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col gap-3 sm:flex-row p-3.5 rounded-xl bg-card/80 border border-border/40 shadow-card">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
           <Input
             placeholder="搜索项目名称、描述、文档名..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-9 bg-background/80 border-border/50 focus:border-emerald-400 focus:ring-emerald-400/20"
           />
         </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-[140px]">
-            <SelectValue placeholder="类型筛选" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部类型</SelectItem>
-            <SelectItem value="game">游戏项目</SelectItem>
-            <SelectItem value="tool">工具项目</SelectItem>
-            <SelectItem value="website">网站项目</SelectItem>
-            <SelectItem value="other">其他</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[140px]">
-            <SelectValue placeholder="状态筛选" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">全部状态</SelectItem>
-            <SelectItem value="active">进行中</SelectItem>
-            <SelectItem value="paused">已暂停</SelectItem>
-            <SelectItem value="completed">已完成</SelectItem>
-            <SelectItem value="archived">已归档</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground/70 shrink-0" />
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full sm:w-[130px] h-9 bg-background/80 border-border/50">
+              <SelectValue placeholder="类型筛选" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部类型</SelectItem>
+              <SelectItem value="game">游戏项目</SelectItem>
+              <SelectItem value="tool">工具项目</SelectItem>
+              <SelectItem value="website">网站项目</SelectItem>
+              <SelectItem value="other">其他</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[130px] h-9 bg-background/80 border-border/50">
+              <SelectValue placeholder="状态筛选" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部状态</SelectItem>
+              <SelectItem value="active">进行中</SelectItem>
+              <SelectItem value="paused">已暂停</SelectItem>
+              <SelectItem value="completed">已完成</SelectItem>
+              <SelectItem value="archived">已归档</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Project grid */}
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-52 rounded-lg" />
+            <Skeleton key={i} className="h-56 rounded-xl" />
           ))}
         </div>
       ) : filteredProjects.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <p className="text-lg">暂无匹配的项目</p>
-          <p className="text-sm mt-1">尝试调整筛选条件，或点击&ldquo;新建项目&rdquo;创建新项目</p>
+        <div className="text-center py-20">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 mx-auto mb-5">
+            <Search className="h-8 w-8 text-muted-foreground/50" />
+          </div>
+          <p className="text-[16px] font-semibold">暂无匹配的项目</p>
+          <p className="text-[14px] text-muted-foreground mt-1.5">尝试调整筛选条件，或点击&ldquo;新建项目&rdquo;创建新项目</p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredProjects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={{
-                ...project,
-                taskCount: project._count?.tasks,
-                memberCount: project._count?.members,
-              }}
-              onClick={() => navigateToProject(project.id)}
-            />
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredProjects.map((project, index) => (
+            <div key={project.id} className="animate-slide-up" style={{ animationDelay: `${index * 60}ms`, animationFillMode: 'backwards' }}>
+              <ProjectCard
+                project={{
+                  ...project,
+                  taskCount: project._count?.tasks,
+                  memberCount: project._count?.members,
+                }}
+                onClick={() => navigateToProject(project.id)}
+              />
+            </div>
           ))}
         </div>
       )}

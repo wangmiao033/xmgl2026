@@ -136,7 +136,7 @@ export function AppSidebar() {
 
       <SidebarHeader className="p-5 relative">
         <div className="flex items-center gap-3 px-1">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/25">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/25 animate-pulse-glow">
             PM
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
@@ -174,7 +174,7 @@ export function AppSidebar() {
               )}
             </div>
             {showSearch && searchQuery.trim() && (
-              <div className="absolute top-full left-3 right-3 mt-1.5 z-50 rounded-xl bg-slate-800/95 backdrop-blur-xl border border-white/[0.08] shadow-float max-h-64 overflow-y-auto">
+              <div className="absolute top-full left-3 right-3 mt-1.5 z-50 rounded-xl bg-slate-800/95 backdrop-blur-xl border border-white/[0.08] shadow-float max-h-64 overflow-y-auto animate-slide-down">
                 {effectiveResults.length > 0 ? (
                   <div className="py-1.5">
                     {effectiveResults.map((result) => (
@@ -216,10 +216,13 @@ export function AppSidebar() {
                     onClick={() => setCurrentView(item.view)}
                     tooltip={item.title}
                     className={cn(
-                      'text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 rounded-lg mx-1',
+                      'text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 rounded-lg mx-1 relative transition-all',
                       'data-[active=true]:bg-emerald-500/15 data-[active=true]:text-emerald-400 data-[active=true]:font-medium'
                     )}
                   >
+                    {currentView === item.view && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-emerald-400 shadow-sm" />
+                    )}
                     <item.icon className="h-[18px] w-[18px]" />
                     <span className="text-[13px]">{item.title}</span>
                   </SidebarMenuButton>
@@ -274,7 +277,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-4 relative">
         <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/[0.04] transition-colors">
-          <Avatar className="h-9 w-9 ring-2 ring-white/10">
+          <Avatar className="h-9 w-9 ring-2 ring-emerald-500/30">
             <AvatarFallback className="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-400 text-sm font-medium">
               张
             </AvatarFallback>
