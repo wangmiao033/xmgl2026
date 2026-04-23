@@ -58,7 +58,7 @@ interface SearchResult {
   subtitle?: string
 }
 
-export function AppSidebar() {
+export function AppSidebar({ currentUser, onLogout }: { currentUser?: { name: string; role: string; email: string } | null; onLogout?: () => void }) {
   const { currentView, setCurrentView, navigateToProject } = useAppStore()
   const [recentProjects, setRecentProjects] = useState<QuickProject[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -279,12 +279,12 @@ export function AppSidebar() {
         <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/[0.04] transition-colors">
           <Avatar className="h-9 w-9 ring-2 ring-emerald-500/30">
             <AvatarFallback className="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-400 text-sm font-medium">
-              张
+              {currentUser?.name?.charAt(0) || 'U'}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-[13px] font-medium text-slate-200">张三</span>
-            <span className="text-[11px] text-slate-500">管理员</span>
+            <span className="text-[13px] font-medium text-slate-200">{currentUser?.name || '用户'}</span>
+            <span className="text-[11px] text-slate-500">{currentUser?.role === 'admin' ? '管理员' : currentUser?.role === 'manager' ? '经理' : '成员'}</span>
           </div>
         </div>
       </SidebarFooter>

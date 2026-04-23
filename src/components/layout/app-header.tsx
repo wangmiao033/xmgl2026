@@ -12,7 +12,13 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
-import { Bell } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { Bell, LogOut, User as UserIcon, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const viewTitles: Record<string, string> = {
@@ -27,7 +33,26 @@ const viewTitles: Record<string, string> = {
   passwords: '密码管理',
 }
 
-export function AppHeader() {
+interface HeaderUser {
+  id: string
+  email: string
+  name: string
+  role: string
+  avatar: string | null
+}
+
+interface AppHeaderProps {
+  currentUser?: HeaderUser
+  onLogout?: () => void
+}
+
+const roleLabels: Record<string, string> = {
+  admin: '管理员',
+  manager: '经理',
+  member: '成员',
+}
+
+export function AppHeader({ currentUser, onLogout }: AppHeaderProps) {
   const { currentView } = useAppStore()
   const [currentTime, setCurrentTime] = useState('')
 
@@ -85,16 +110,46 @@ export function AppHeader() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-2">
         {currentTime && (
-          <span className="hidden md:inline-flex items-center text-[13px] text-muted-foreground tabular-nums font-medium tracking-tight">
+          <span className="hidden md:inline-flex items-center text-[13px] text-muted-foreground tabular-nums font-medium tracking-tight mr-2">
             {currentTime}
           </span>
         )}
-        <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-lg hover:bg-muted/60">
-          <Bell className="h-4 w-4 text-muted-foreground" />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-card" />
-        </Button>
+
+        {currentUser && (
+          <div className="flex items-center gap-2">
+            {/* User badge */}
+            <div className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 bg-muted/40 border border-border/30">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
+                <UserIcon className="h-3.5 w-3.5" />
+              </div>
+              <div className="hidden sm:block">
+                <span className="text-[13px] font-medium text-foreground">{currentUser.name}</span>
+                <span className="text-[11px] text-muted-foreground ml-1.5">({roleLabels[currentUser.role] || currentUser.role})</span>
+              </div>
+            </div>
+
+            {/* Logout */}
+            {onLogout && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10"
+                      onClick={onLogout}
+                    >
+                      <LogOut className="h-4 w-4 text-muted-foreground hover:text-red-500" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>退出登录</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        )}
       </div>
     </header>
   )
