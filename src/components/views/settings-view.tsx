@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { useTheme } from 'next-themes'
-import { Building2, Bell, Moon, Globe, Database, Download, Trash2, Info, Palette } from 'lucide-react'
+import { Building2, Bell, Moon, Globe, Database, Download, Trash2, Info, Palette, KeyRound, Eye, EyeOff, Loader2 } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +65,15 @@ export function SettingsView() {
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [saving, setSaving] = useState(false)
 
+  // Change password state
+  const [oldPassword, setOldPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showOldPwd, setShowOldPwd] = useState(false)
+  const [showNewPwd, setShowNewPwd] = useState(false)
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false)
+  const [changingPwd, setChangingPwd] = useState(false)
+
   const { companyName, companyDomain, taskNotify, deadlineNotify, statusNotify, emailDigest } = settings
 
   const updateSetting = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
@@ -114,6 +123,58 @@ export function SettingsView() {
       toast.success('所有数据已重置')
     } catch {
       toast.error('重置数据失败')
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      toast.error('请填写完整信息')
+      return
+    }
+    if (newPassword.length < 4) {
+      toast.error('新密码至少需要4个字符')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('两次输入的密码不一致')
+      return
+    }
+
+    setChangingPwd(true)
+    try {
+      // Get current user from session
+      const sessionRes = await fetch('/api/auth/session')
+      const sessionData = await sessionRes.json()
+
+      if (!sessionData.authenticated || !sessionData.user?.id) {
+        toast.error('登录已过期，请重新登录')
+        return
+      }
+
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: sessionData.user.id,
+          oldPassword,
+          newPassword,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        toast.success('密码修改成功')
+        setOldPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+      } else {
+        toast.error(data.error || '修改失败')
+      }
+    } catch {
+      toast.error('修改密码失败')
+    } finally {
+      setChangingPwd(false)
     }
   }
 
@@ -239,6 +300,106 @@ export function SettingsView() {
       >
         {saving ? '保存中...' : '保存设置'}
       </Button>
+
+      {/* Account security - Change password */}
+      <Card className="shadow-card border-border/40 overflow-hidden">
+        <div className="h-[2.5px] bg-gradient-to-r from-rose-400 to-pink-500" />
+        <CardHeader className="pb-3">
+          <CardTitle className="text-[15px] font-semibold flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-500/15">
+              <KeyRound className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+            </div>
+            账号安全
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-[13px] text-muted-foreground">修改登录密码，建议定期更换以保障账号安全。</p>
+
+          {/* Old password */}
+          <div className="space-y-1.5">
+            <Label htmlFor="old-password" className="text-[13px]">原密码</Label>
+            <div className="relative">
+              <Input
+                id="old-password"
+                type={showOldPwd ? 'text' : 'password'}
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                placeholder="请输入当前密码"
+                className="h-10 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowOldPwd(!showOldPwd)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
+              >
+                {showOldPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* New password */}
+          <div className="space-y-1.5">
+            <Label htmlFor="new-password" className="text-[13px]">新密码</Label>
+            <div className="relative">
+              <Input
+                id="new-password"
+                type={showNewPwd ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="请输入新密码（至少4位）"
+                className="h-10 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPwd(!showNewPwd)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
+              >
+                {showNewPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {newPassword && newPassword.length > 0 && newPassword.length < 4 && (
+              <p className="text-[12px] text-amber-600 dark:text-amber-400">密码长度至少4个字符</p>
+            )}
+          </div>
+
+          {/* Confirm password */}
+          <div className="space-y-1.5">
+            <Label htmlFor="confirm-password" className="text-[13px]">确认新密码</Label>
+            <div className="relative">
+              <Input
+                id="confirm-password"
+                type={showConfirmPwd ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="请再次输入新密码"
+                className="h-10 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPwd(!showConfirmPwd)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
+              >
+                {showConfirmPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {confirmPassword && confirmPassword !== newPassword && (
+              <p className="text-[12px] text-red-500">两次输入的密码不一致</p>
+            )}
+          </div>
+
+          <Button
+            onClick={handleChangePassword}
+            disabled={changingPwd || !oldPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 4}
+            className="bg-rose-600 hover:bg-rose-700 text-white w-full h-10 shadow-sm"
+          >
+            {changingPwd ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />修改中...</>
+            ) : (
+              '修改密码'
+            )}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Data management */}
       <Card className="shadow-card border-border/40 overflow-hidden">
