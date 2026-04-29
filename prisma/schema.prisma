@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String   @default("")
+  avatar    String?
+  role      String   @default("member") // admin, manager, member
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  projects  ProjectMember[]
+  tasks     TaskAssignee[]
+}
+
+model Project {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  status      String          @default("active") // active, paused, completed, archived
+  priority    String          @default("medium") // low, medium, high, urgent
+  category    String          @default("other") // game, tool, website, other
+  docUrl      String?
+  docName     String?
+  startDate   DateTime?
+  endDate     DateTime?
+  progress    Int             @default(0) // 0-100
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  members     ProjectMember[]
+  tasks       Task[]
+  columns     TaskColumn[]
+}
+
+model ProjectMember {
+  id        String  @id @default(cuid())
+  projectId String
+  userId    String
+  role      String  @default("member") // owner, manager, member
+  joinedAt  DateTime @default(now())
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+model TaskColumn {
+  id        String  @id @default(cuid())
+  projectId String
+  title     String
+  order     Int     @default(0)
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+
+  @@index([projectId])
+}
+
+model Task {
+  id          String          @id @default(cuid())
+  title       String
+  description String?
+  status      String          @default("todo") // maps to column
+  priority    String          @default("medium") // low, medium, high, urgent
+  order       Int             @default(0)
+  projectId   String
+  columnId    String?
+  dueDate     DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  column      TaskColumn?     @relation(fields: [columnId], references: [id], onDelete: SetNull)
+  assignees   TaskAssignee[]
+
+  @@index([projectId])
+  @@index([columnId])
+}
+
+model TaskAssignee {
+  id        String  @id @default(cuid())
+  taskId    String
+  userId    String
+  task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+}
+
+model PasswordEntry {
+  id          String   @id @default(cuid())
+  title       String
+  url         String?
+  username    String?
+  password    String
+  email       String?
+  phone       String?
+  notes       String?
+  category    String   @default("other") // website, game, tool, server, social, other
+  isFavorite  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
