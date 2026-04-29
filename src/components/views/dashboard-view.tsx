@@ -34,21 +34,23 @@ interface DashboardStats {
 const priorityColors: Record<string, string> = { urgent: '#ef4444', high: '#f97316', medium: '#38bdf8', low: '#94a3b8' }
 const statusColors: Record<string, string> = { done: '#10b981', in_progress: '#38bdf8', todo: '#94a3b8', review: '#f59e0b' }
 
+const chartTabs = ['本周', '本月', '全部'] as const
+type ChartTab = typeof chartTabs[number]
+
 export function DashboardView() {
   const { navigateToProject, setCurrentView } = useAppStore()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [greeting, setGreeting] = useState('')
-
-  useEffect(() => {
+  const [activeTab, setActiveTab] = useState<ChartTab>('全部')
+  const [greeting] = useState(() => {
     const hour = new Date().getHours()
-    if (hour < 6) setGreeting('夜深了')
-    else if (hour < 9) setGreeting('早上好')
-    else if (hour < 12) setGreeting('上午好')
-    else if (hour < 14) setGreeting('中午好')
-    else if (hour < 18) setGreeting('下午好')
-    else setGreeting('晚上好')
-  }, [])
+    if (hour < 6) return '夜深了'
+    if (hour < 9) return '早上好'
+    if (hour < 12) return '上午好'
+    if (hour < 14) return '中午好'
+    if (hour < 18) return '下午好'
+    return '晚上好'
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -93,12 +95,26 @@ export function DashboardView() {
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 p-6 lg:p-8 text-white shadow-elevated">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 p-6 lg:p-8 text-white shadow-elevated animate-gradient-shift">
+        {/* Grid pattern overlay */}
+        <div className="absolute inset-0 opacity-[0.06]" style={{
+          backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)`,
+          backgroundSize: '24px 24px'
+        }} />
+
+        {/* Floating decoration circles */}
+        <div className="absolute top-4 right-12 w-20 h-20 bg-white/10 rounded-full animate-float" />
+        <div className="absolute top-2 right-48 w-10 h-10 bg-white/8 rounded-full animate-float" style={{ animationDelay: '1s' }} />
+        <div className="absolute bottom-4 right-24 w-14 h-14 bg-white/6 rounded-full animate-float" style={{ animationDelay: '2s' }} />
+        <div className="absolute bottom-2 left-1/3 w-8 h-8 bg-white/10 rounded-full animate-float" style={{ animationDelay: '3.5s' }} />
+
+        {/* Original decoration */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
         <div className="absolute bottom-0 left-1/2 w-48 h-48 bg-white/5 rounded-full translate-y-1/2" />
+
         <div className="relative">
           <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-5 w-5 text-emerald-200" />
+            <Sparkles className="h-5 w-5 text-emerald-200 animate-pulse-soft" />
             <span className="text-emerald-100 text-[14px] font-medium">{todayDate}</span>
           </div>
           <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">{greeting}，张三</h1>
@@ -108,16 +124,30 @@ export function DashboardView() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard title="总项目数" value={stats.totalProjects} description={`${stats.activeProjects} 个进行中`}
-          icon={FolderKanban} iconColor="text-emerald-600 dark:text-emerald-400" iconBg="from-emerald-500/15 to-emerald-500/5" />
-        <StatsCard title="进行中任务" value={stats.inProgressTasks} description={`共 ${stats.totalTasks} 个任务`}
-          icon={ListChecks} iconColor="text-sky-600 dark:text-sky-400" iconBg="from-sky-500/15 to-sky-500/5" />
-        <StatsCard title="已完成任务" value={stats.completedTasks} description={`完成率 ${stats.completionRate}%`}
-          icon={CheckCircle2} iconColor="text-teal-600 dark:text-teal-400" iconBg="from-teal-500/15 to-teal-500/5" />
-        <StatsCard title="团队成员" value={stats.totalUsers} description={`${stats.completedProjects} 个项目已完成`}
-          icon={Users} iconColor="text-violet-600 dark:text-violet-400" iconBg="from-violet-500/15 to-violet-500/5" />
+      {/* Stats Section */}
+      <div>
+        <div className="flex items-center gap-3 mb-5">
+          <h2 className="text-[18px] font-semibold">概览数据</h2>
+          <div className="h-[2px] w-12 bg-gradient-to-r from-emerald-400 to-transparent rounded-full" />
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
+            <StatsCard title="总项目数" value={stats.totalProjects} description={`${stats.activeProjects} 个进行中`}
+              icon={FolderKanban} iconColor="text-emerald-600 dark:text-emerald-400" iconBg="from-emerald-500/15 to-emerald-500/5" />
+          </div>
+          <div className="animate-slide-up" style={{ animationDelay: '80ms' }}>
+            <StatsCard title="进行中任务" value={stats.inProgressTasks} description={`共 ${stats.totalTasks} 个任务`}
+              icon={ListChecks} iconColor="text-sky-600 dark:text-sky-400" iconBg="from-sky-500/15 to-sky-500/5" />
+          </div>
+          <div className="animate-slide-up" style={{ animationDelay: '160ms' }}>
+            <StatsCard title="已完成任务" value={stats.completedTasks} description={`完成率 ${stats.completionRate}%`}
+              icon={CheckCircle2} iconColor="text-teal-600 dark:text-teal-400" iconBg="from-teal-500/15 to-teal-500/5" />
+          </div>
+          <div className="animate-slide-up" style={{ animationDelay: '240ms' }}>
+            <StatsCard title="团队成员" value={stats.totalUsers} description={`${stats.completedProjects} 个项目已完成`}
+              icon={Users} iconColor="text-violet-600 dark:text-violet-400" iconBg="from-violet-500/15 to-violet-500/5" />
+          </div>
+        </div>
       </div>
 
       {/* Documents */}
@@ -139,16 +169,16 @@ export function DashboardView() {
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {projectsWithDocs.map((project: any) => (
                 <a key={project.id} href={project.docUrl} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-3.5 p-4 rounded-xl border border-border/40 hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-card-hover bg-card/80 transition-all group"
+                  className="flex items-center gap-3.5 p-4 rounded-xl border border-border/40 hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-card-hover hover:-translate-y-0.5 bg-card/80 transition-all duration-300 group"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-500/20 dark:to-teal-500/20 text-emerald-600 dark:text-emerald-400 shrink-0 shadow-sm">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-500/20 dark:to-teal-500/20 text-emerald-600 dark:text-emerald-400 shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110">
                     <FileText className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-medium truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{project.docName || project.name}</p>
                     <p className="text-[12px] text-muted-foreground truncate mt-0.5">{project.name}</p>
                   </div>
-                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-emerald-500 shrink-0 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-emerald-500 shrink-0 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </a>
               ))}
             </div>
@@ -157,54 +187,74 @@ export function DashboardView() {
       )}
 
       {/* Charts */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card className="shadow-card border-border/40 overflow-hidden">
-          <div className="h-[2.5px] bg-gradient-to-r from-sky-400 to-sky-500" />
-          <CardHeader className="pb-2 pt-5">
-            <CardTitle className="text-[15px] font-semibold flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-sky-500" />
-              任务状态分布
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[260px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={taskStatusData} barCategoryGap="20%">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 13 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '12px', fontSize: '13px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                  <Bar dataKey="value" name="任务数" radius={[6, 6, 0, 0]}>
-                    {taskStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+      <div>
+        {/* Tab switcher */}
+        <div className="flex items-center gap-1 mb-5 p-1 bg-muted/60 rounded-lg w-fit">
+          {chartTabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                'px-4 py-1.5 text-[13px] font-medium rounded-md transition-all duration-200',
+                activeTab === tab
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
 
-        <Card className="shadow-card border-border/40 overflow-hidden">
-          <div className="h-[2.5px] bg-gradient-to-r from-amber-400 to-orange-400" />
-          <CardHeader className="pb-2 pt-5">
-            <CardTitle className="text-[15px] font-semibold flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-amber-500" />
-              任务优先级分布
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[260px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={taskPriorityData} cx="50%" cy="50%" innerRadius={65} outerRadius={95} paddingAngle={5} dataKey="value"
-                    label={({ name, value }) => `${name} ${value}`}>
-                    {taskPriorityData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '12px', fontSize: '13px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Card className="shadow-card border-border/40 overflow-hidden backdrop-blur-sm bg-card/80">
+            <div className="h-[2.5px] bg-gradient-to-r from-sky-400 to-sky-500" />
+            <CardHeader className="pb-2 pt-5">
+              <CardTitle className="text-[15px] font-semibold flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-sky-500" />
+                任务状态分布
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={taskStatusData} barCategoryGap="20%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 13 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '12px', fontSize: '13px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backdropFilter: 'blur(8px)' }} />
+                    <Bar dataKey="value" name="任务数" radius={[6, 6, 0, 0]}>
+                      {taskStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-card border-border/40 overflow-hidden backdrop-blur-sm bg-card/80">
+            <div className="h-[2.5px] bg-gradient-to-r from-amber-400 to-orange-400" />
+            <CardHeader className="pb-2 pt-5">
+              <CardTitle className="text-[15px] font-semibold flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-amber-500" />
+                任务优先级分布
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={taskPriorityData} cx="50%" cy="50%" innerRadius={65} outerRadius={95} paddingAngle={5} dataKey="value"
+                      label={({ name, value }) => `${name} ${value}`}>
+                      {taskPriorityData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '12px', fontSize: '13px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backdropFilter: 'blur(8px)' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Recent projects */}
@@ -212,9 +262,9 @@ export function DashboardView() {
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-[18px] font-semibold">所有项目</h2>
           <Button variant="ghost" size="sm"
-            className="text-[13px] text-muted-foreground hover:text-foreground"
+            className="text-[13px] text-muted-foreground hover:text-foreground group/btn transition-all duration-300"
             onClick={() => setCurrentView('projects')}>
-            查看全部 <ArrowRight className="h-4 w-4 ml-1" />
+            查看全部 <ArrowRight className="h-4 w-4 ml-1 transition-transform duration-300 group-hover/btn:translate-x-1" />
           </Button>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -233,11 +283,13 @@ export function DashboardView() {
           <CardContent className="p-0">
             <div className="divide-y divide-border/40">
               {stats.recentTasks.map((task: any) => (
-                <div key={task.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors group/task">
+                <div key={task.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-gradient-to-r hover:from-emerald-50/50 hover:to-transparent dark:hover:from-emerald-500/5 dark:hover:to-transparent transition-all duration-200 group/task cursor-pointer">
                   <div className="flex items-center gap-3.5 min-w-0">
-                    <div className={cn('h-2.5 w-2.5 rounded-full shrink-0',
-                      task.priority === 'urgent' && 'bg-red-500', task.priority === 'high' && 'bg-orange-500',
-                      task.priority === 'medium' && 'bg-sky-500', task.priority === 'low' && 'bg-slate-400')} />
+                    <div className={cn('h-2.5 w-2.5 rounded-full shrink-0 transition-all duration-300',
+                      task.priority === 'urgent' && 'bg-red-500 animate-pulse-soft',
+                      task.priority === 'high' && 'bg-orange-500',
+                      task.priority === 'medium' && 'bg-sky-500',
+                      task.priority === 'low' && 'bg-slate-400')} />
                     <div className="min-w-0">
                       <p className="text-[13px] font-medium truncate">{task.title}</p>
                       <p className="text-[12px] text-muted-foreground mt-0.5">{task.project?.name}</p>
@@ -252,6 +304,8 @@ export function DashboardView() {
                     )}>
                       {task.status === 'done' ? '已完成' : task.status === 'in_progress' ? '进行中' : task.status === 'review' ? '审核中' : '待办'}
                     </Badge>
+                    {/* Click to navigate visual cue */}
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/0 group-hover/task:text-muted-foreground/60 transition-all duration-200 group-hover/task:translate-x-0.5" />
                     {task.assignees?.length > 0 && (
                       <div className="flex -space-x-1.5 opacity-0 group-hover/task:opacity-100 transition-opacity">
                         {task.assignees.slice(0, 2).map((a: any) => (

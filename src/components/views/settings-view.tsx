@@ -20,6 +20,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 
 interface Settings {
   companyName: string
@@ -185,12 +186,12 @@ export function SettingsView() {
         <p className="text-muted-foreground mt-1 text-[15px]">管理系统偏好设置</p>
       </div>
 
-      {/* Company settings */}
-      <Card className="shadow-card border-border/40 overflow-hidden">
-        <div className="h-[2.5px] bg-gradient-to-r from-emerald-400 to-teal-400" />
+      {/* Company settings - Enhanced */}
+      <Card className="shadow-card bg-card/80 backdrop-blur-sm border-border/30 overflow-hidden hover:shadow-card-hover transition-shadow duration-300">
+        <div className="h-[3px] bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500/60" />
         <CardHeader className="pb-3">
           <CardTitle className="text-[15px] font-semibold flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/15">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-500/15 dark:to-teal-500/15 shadow-sm">
               <Building2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             公司信息
@@ -221,12 +222,12 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* Notification settings */}
-      <Card className="shadow-card border-border/40 overflow-hidden">
-        <div className="h-[2.5px] bg-gradient-to-r from-sky-400 to-blue-400" />
+      {/* Notification settings - Enhanced */}
+      <Card className="shadow-card bg-card/80 backdrop-blur-sm border-border/30 overflow-hidden hover:shadow-card-hover transition-shadow duration-300">
+        <div className="h-[3px] bg-gradient-to-r from-sky-400 via-blue-400 to-sky-500/60" />
         <CardHeader className="pb-3">
           <CardTitle className="text-[15px] font-semibold flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 dark:bg-sky-500/15">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-sky-100 to-blue-100 dark:from-sky-500/15 dark:to-blue-500/15 shadow-sm">
               <Bell className="h-4 w-4 text-sky-600 dark:text-sky-400" />
             </div>
             通知设置
@@ -238,7 +239,9 @@ export function SettingsView() {
               <Label className="text-[14px]">任务分配通知</Label>
               <p className="text-[12px] text-muted-foreground">当有新任务分配给您时接收通知</p>
             </div>
-            <Switch checked={taskNotify} onCheckedChange={(v) => updateSetting('taskNotify', v)} />
+            <div className={cn(taskNotify && 'shadow-[0_0_8px_rgba(16,185,129,0.2)] rounded-full transition-shadow duration-300')}>
+              <Switch checked={taskNotify} onCheckedChange={(v) => updateSetting('taskNotify', v)} />
+            </div>
           </div>
           <div className="border-t border-border/40" />
           <div className="flex items-center justify-between">
@@ -246,7 +249,9 @@ export function SettingsView() {
               <Label className="text-[14px]">任务截止提醒</Label>
               <p className="text-[12px] text-muted-foreground">任务截止日期前发送提醒</p>
             </div>
-            <Switch checked={deadlineNotify} onCheckedChange={(v) => updateSetting('deadlineNotify', v)} />
+            <div className={cn(deadlineNotify && 'shadow-[0_0_8px_rgba(16,185,129,0.2)] rounded-full transition-shadow duration-300')}>
+              <Switch checked={deadlineNotify} onCheckedChange={(v) => updateSetting('deadlineNotify', v)} />
+            </div>
           </div>
           <div className="border-t border-border/40" />
           <div className="flex items-center justify-between">
@@ -254,7 +259,9 @@ export function SettingsView() {
               <Label className="text-[14px]">项目状态更新</Label>
               <p className="text-[12px] text-muted-foreground">项目状态变更时通知相关人员</p>
             </div>
-            <Switch checked={statusNotify} onCheckedChange={(v) => updateSetting('statusNotify', v)} />
+            <div className={cn(statusNotify && 'shadow-[0_0_8px_rgba(16,185,129,0.2)] rounded-full transition-shadow duration-300')}>
+              <Switch checked={statusNotify} onCheckedChange={(v) => updateSetting('statusNotify', v)} />
+            </div>
           </div>
           <div className="border-t border-border/40" />
           <div className="flex items-center justify-between">
@@ -262,17 +269,19 @@ export function SettingsView() {
               <Label className="text-[14px]">邮件摘要</Label>
               <p className="text-[12px] text-muted-foreground">每日发送任务摘要到邮箱</p>
             </div>
-            <Switch checked={emailDigest} onCheckedChange={(v) => updateSetting('emailDigest', v)} />
+            <div className={cn(emailDigest && 'shadow-[0_0_8px_rgba(16,185,129,0.2)] rounded-full transition-shadow duration-300')}>
+              <Switch checked={emailDigest} onCheckedChange={(v) => updateSetting('emailDigest', v)} />
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Theme settings */}
-      <Card className="shadow-card border-border/40 overflow-hidden">
-        <div className="h-[2.5px] bg-gradient-to-r from-violet-400 to-purple-400" />
+      {/* Theme settings - Enhanced */}
+      <Card className="shadow-card bg-card/80 backdrop-blur-sm border-border/30 overflow-hidden hover:shadow-card-hover transition-shadow duration-300">
+        <div className="h-[3px] bg-gradient-to-r from-violet-400 via-purple-400 to-violet-500/60" />
         <CardHeader className="pb-3">
           <CardTitle className="text-[15px] font-semibold flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-500/15">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-500/15 dark:to-purple-500/15 shadow-sm">
               <Palette className="h-4 w-4 text-violet-600 dark:text-violet-400" />
             </div>
             外观设置
@@ -284,10 +293,12 @@ export function SettingsView() {
               <Label className="text-[14px]">深色模式</Label>
               <p className="text-[12px] text-muted-foreground">切换深色/浅色主题</p>
             </div>
-            <Switch
-              checked={theme === 'dark'}
-              onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-            />
+            <div className={cn(theme === 'dark' && 'shadow-[0_0_8px_rgba(16,185,129,0.2)] rounded-full transition-shadow duration-300')}>
+              <Switch
+                checked={theme === 'dark'}
+                onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -296,17 +307,17 @@ export function SettingsView() {
       <Button
         onClick={handleSave}
         disabled={saving}
-        className="bg-emerald-600 hover:bg-emerald-700 text-white w-full h-11 shadow-sm"
+        className="bg-emerald-600 hover:bg-emerald-700 text-white w-full h-11 shadow-sm hover:shadow-glow-emerald transition-shadow duration-300"
       >
         {saving ? '保存中...' : '保存设置'}
       </Button>
 
-      {/* Account security - Change password */}
-      <Card className="shadow-card border-border/40 overflow-hidden">
-        <div className="h-[2.5px] bg-gradient-to-r from-rose-400 to-pink-500" />
+      {/* Account security - Enhanced */}
+      <Card className="shadow-card bg-card/80 backdrop-blur-sm border-border/30 overflow-hidden hover:shadow-card-hover transition-shadow duration-300">
+        <div className="h-[3px] bg-gradient-to-r from-rose-400 via-pink-500 to-rose-500/60" />
         <CardHeader className="pb-3">
           <CardTitle className="text-[15px] font-semibold flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-500/15">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-rose-100 to-pink-100 dark:from-rose-500/15 dark:to-pink-500/15 shadow-sm">
               <KeyRound className="h-4 w-4 text-rose-600 dark:text-rose-400" />
             </div>
             账号安全
@@ -401,12 +412,12 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* Data management */}
-      <Card className="shadow-card border-border/40 overflow-hidden">
-        <div className="h-[2.5px] bg-gradient-to-r from-amber-400 to-orange-400" />
+      {/* Data management - Enhanced */}
+      <Card className="shadow-card bg-card/80 backdrop-blur-sm border-border/30 overflow-hidden hover:shadow-card-hover transition-shadow duration-300">
+        <div className="h-[3px] bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500/60" />
         <CardHeader className="pb-3">
           <CardTitle className="text-[15px] font-semibold flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-500/15">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-500/15 dark:to-orange-500/15 shadow-sm">
               <Database className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             </div>
             数据管理
@@ -458,12 +469,12 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* About */}
-      <Card className="shadow-card border-border/40 overflow-hidden">
-        <div className="h-[2.5px] bg-gradient-to-r from-slate-300 to-slate-400" />
+      {/* About - Enhanced */}
+      <Card className="shadow-card bg-card/80 backdrop-blur-sm border-border/30 overflow-hidden hover:shadow-card-hover transition-shadow duration-300">
+        <div className="h-[3px] bg-gradient-to-r from-slate-300 via-slate-400 to-slate-400/60" />
         <CardHeader className="pb-3">
           <CardTitle className="text-[15px] font-semibold flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-500/15">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-500/15 dark:to-slate-600/15 shadow-sm">
               <Info className="h-4 w-4 text-slate-600 dark:text-slate-400" />
             </div>
             关于系统

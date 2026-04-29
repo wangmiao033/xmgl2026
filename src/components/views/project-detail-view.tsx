@@ -25,24 +25,24 @@ interface TaskColumn { id: string; title: string; order: number; tasks: Task[] }
 interface ProjectMember { id: string; role: string; user: { id: string; name: string; email: string } }
 interface ProjectDetail { id: string; name: string; description?: string | null; status: string; priority: string; category: string; docUrl?: string | null; docName?: string | null; progress: number; startDate?: string | null; endDate?: string | null; members: ProjectMember[]; columns: TaskColumn[]; _count: { tasks: number; members: number } }
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  active: { label: '进行中', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400' },
-  paused: { label: '已暂停', className: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400' },
-  completed: { label: '已完成', className: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-400' },
-  archived: { label: '已归档', className: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400' },
+const statusConfig: Record<string, { label: string; className: string; dotColor: string }> = {
+  active: { label: '进行中', className: 'bg-gradient-to-r from-emerald-50 to-emerald-100/80 text-emerald-700 dark:from-emerald-500/10 dark:to-emerald-500/20 dark:text-emerald-400', dotColor: 'bg-emerald-500' },
+  paused: { label: '已暂停', className: 'bg-gradient-to-r from-amber-50 to-amber-100/80 text-amber-700 dark:from-amber-500/10 dark:to-amber-500/20 dark:text-amber-400', dotColor: 'bg-amber-500' },
+  completed: { label: '已完成', className: 'bg-gradient-to-r from-teal-50 to-teal-100/80 text-teal-700 dark:from-teal-500/10 dark:to-teal-500/20 dark:text-teal-400', dotColor: 'bg-teal-500' },
+  archived: { label: '已归档', className: 'bg-gradient-to-r from-slate-50 to-slate-100/80 text-slate-600 dark:from-slate-500/10 dark:to-slate-500/20 dark:text-slate-400', dotColor: 'bg-slate-400' },
 }
 const priorityConfig: Record<string, { label: string; className: string }> = {
-  low: { label: '低', className: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400' },
-  medium: { label: '中', className: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400' },
-  high: { label: '高', className: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-400' },
-  urgent: { label: '紧急', className: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-400' },
+  low: { label: '低', className: 'bg-gradient-to-r from-slate-50 to-slate-100/80 text-slate-600 dark:from-slate-500/10 dark:to-slate-500/20 dark:text-slate-400' },
+  medium: { label: '中', className: 'bg-gradient-to-r from-sky-50 to-sky-100/80 text-sky-700 dark:from-sky-500/10 dark:to-sky-500/20 dark:text-sky-400' },
+  high: { label: '高', className: 'bg-gradient-to-r from-orange-50 to-orange-100/80 text-orange-700 dark:from-orange-500/10 dark:to-orange-500/20 dark:text-orange-400' },
+  urgent: { label: '紧急', className: 'bg-gradient-to-r from-red-50 to-red-100/80 text-red-700 dark:from-red-500/10 dark:to-red-500/20 dark:text-red-400' },
 }
 
 const columnStyles: Record<string, { accent: string; badge: string; bg: string }> = {
-  '待办': { accent: 'from-slate-400 to-slate-500', badge: 'bg-slate-500', bg: 'bg-slate-50/70 dark:bg-slate-900/30' },
-  '进行中': { accent: 'from-sky-400 to-sky-500', badge: 'bg-sky-500', bg: 'bg-sky-50/50 dark:bg-sky-900/20' },
-  '审核中': { accent: 'from-amber-400 to-amber-500', badge: 'bg-amber-500', bg: 'bg-amber-50/50 dark:bg-amber-900/20' },
-  '已完成': { accent: 'from-emerald-400 to-emerald-500', badge: 'bg-emerald-500', bg: 'bg-emerald-50/50 dark:bg-emerald-900/20' },
+  '待办': { accent: 'from-slate-400 to-slate-500', badge: 'bg-gradient-to-r from-slate-500 to-slate-600', bg: 'bg-slate-50/50 dark:bg-slate-900/20' },
+  '进行中': { accent: 'from-sky-400 to-sky-500', badge: 'bg-gradient-to-r from-sky-500 to-sky-600', bg: 'bg-sky-50/30 dark:bg-sky-900/15' },
+  '审核中': { accent: 'from-amber-400 to-amber-500', badge: 'bg-gradient-to-r from-amber-500 to-amber-600', bg: 'bg-amber-50/30 dark:bg-amber-900/15' },
+  '已完成': { accent: 'from-emerald-400 to-emerald-500', badge: 'bg-gradient-to-r from-emerald-500 to-emerald-600', bg: 'bg-emerald-50/30 dark:bg-emerald-900/15' },
 }
 
 const columnTitleToStatus: Record<string, string> = { '待办': 'todo', '进行中': 'in_progress', '审核中': 'review', '已完成': 'done' }
@@ -51,7 +51,7 @@ function DraggableTaskCard({ task, onClick }: { task: Task; onClick?: () => void
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, data: { task, columnId: task.columnId } })
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 1000 } : undefined
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn('transition-opacity', isDragging && 'opacity-40 scale-[1.02]')}>
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn('transition-all duration-200', isDragging && 'opacity-40 scale-[1.02]')}>
       <TaskCard task={task} onClick={onClick} />
     </div>
   )
@@ -60,7 +60,7 @@ function DraggableTaskCard({ task, onClick }: { task: Task; onClick?: () => void
 function DroppableColumn({ column, children }: { column: TaskColumn; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { column } })
   return (
-    <div ref={setNodeRef} className={cn('transition-all duration-200 rounded-xl', isOver && 'ring-2 ring-primary/40 ring-offset-2 bg-primary/5')}>
+    <div ref={setNodeRef} className={cn('transition-all duration-200 rounded-xl', isOver && 'ring-2 ring-emerald-400/30 bg-emerald-50/30 dark:bg-emerald-900/10')}>
       {children}
     </div>
   )
@@ -143,28 +143,34 @@ export function ProjectDetailView() {
   const totalTasks = project.columns.reduce((sum, col) => sum + col.tasks.length, 0)
 
   return (
-    <div className="space-y-6">
-      <button onClick={() => setCurrentView('projects')} className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors -ml-1">
-        <ArrowLeft className="h-4 w-4" /> 返回项目列表
+    <div className="space-y-6 animate-fade-in">
+      {/* Enhanced Back Button */}
+      <button onClick={() => setCurrentView('projects')} className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-all -ml-1 hover:-translate-x-0.5 group">
+        <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" /> 返回项目列表
       </button>
 
-      {/* Header */}
-      <Card className="overflow-hidden shadow-card border-border/50">
-        {isGame && <div className="h-1 bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400" />}
+      {/* Enhanced Header Card */}
+      <Card className="overflow-hidden shadow-card bg-card/80 backdrop-blur-sm border-border/30 relative">
+        {/* Subtle gradient accent line */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400/60 via-teal-400/40 to-transparent" />
+        {isGame && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400" />}
         <CardContent className="p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="space-y-2.5 flex-1">
+            <div className="space-y-3 flex-1">
               <div className="flex items-center gap-3 flex-wrap">
                 {isGame && (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/15">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-500/15 dark:to-teal-500/15 shadow-sm">
                     <Gamepad2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
                 )}
                 <h1 className="text-xl font-bold tracking-tight">{project.name}</h1>
-                <Badge variant="secondary" className={cn('text-[11px] px-2.5 py-0.5 font-medium', status.className)}>{status.label}</Badge>
-                <Badge variant="outline" className={cn('text-[11px] px-2.5 py-0.5 font-medium', priority.className)}>{priority.label}优先级</Badge>
+                <Badge variant="secondary" className={cn('text-[11px] px-2.5 py-0.5 font-medium rounded-lg', status.className)}>
+                  <span className={cn('inline-block h-1.5 w-1.5 rounded-full mr-1.5', status.dotColor)} />
+                  {status.label}
+                </Badge>
+                <Badge variant="outline" className={cn('text-[11px] px-2.5 py-0.5 font-medium rounded-lg', priority.className)}>{priority.label}优先级</Badge>
               </div>
-              {project.description && <p className="text-[14px] text-muted-foreground leading-relaxed">{project.description}</p>}
+              {project.description && <p className="text-[14px] text-muted-foreground leading-relaxed mt-1">{project.description}</p>}
               <div className="flex items-center gap-5 text-[13px] text-muted-foreground flex-wrap">
                 <span>{project._count.tasks} 个任务</span>
                 <span>{project._count.members} 名成员</span>
@@ -173,12 +179,12 @@ export function ProjectDetailView() {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)} className="text-[13px]">
+              <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)} className="text-[13px] hover:bg-muted/50">
                 <Pencil className="h-3.5 w-3.5 mr-1.5" />编辑
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-[13px] text-red-500 hover:text-red-600 hover:bg-red-50">
+                  <Button variant="outline" size="sm" className="text-[13px] text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
                     <Trash2 className="h-3.5 w-3.5 mr-1.5" />删除
                   </Button>
                 </AlertDialogTrigger>
@@ -196,9 +202,11 @@ export function ProjectDetailView() {
               <span className="font-semibold tabular-nums">{project.progress}%</span>
             </div>
             <div className="h-2.5 rounded-full bg-muted/50 overflow-hidden">
-              <div className={cn('h-full rounded-full transition-all duration-500',
-                project.progress >= 80 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : project.progress >= 50 ? 'bg-gradient-to-r from-sky-400 to-sky-500' : 'bg-gradient-to-r from-amber-400 to-amber-500'
-              )} style={{ width: `${project.progress}%` }} />
+              <div className={cn('h-full rounded-full transition-all duration-500 relative overflow-hidden',
+                project.progress >= 80 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]' : project.progress >= 50 ? 'bg-gradient-to-r from-sky-400 to-sky-500' : 'bg-gradient-to-r from-amber-400 to-amber-500'
+              )} style={{ width: `${project.progress}%` }}>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
+              </div>
             </div>
           </div>
 
@@ -206,7 +214,7 @@ export function ProjectDetailView() {
             <span className="text-[13px] text-muted-foreground">成员</span>
             <div className="flex -space-x-2">
               {project.members.map((member) => (
-                <Avatar key={member.id} className="h-8 w-8 border-2 border-card shadow-sm">
+                <Avatar key={member.id} className="h-8 w-8 border-2 border-card shadow-sm ring-1 ring-border/20">
                   <AvatarFallback className="text-[11px] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 text-slate-600 dark:text-slate-300 font-medium">{member.user.name.charAt(0)}</AvatarFallback>
                 </Avatar>
               ))}
@@ -216,7 +224,7 @@ export function ProjectDetailView() {
           {project.docUrl && (
             <div className="mt-6 pt-5 border-t border-border/50">
               <a href={project.docUrl} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 border border-emerald-200/60 dark:border-emerald-500/20 hover:shadow-card-hover transition-all group">
+                className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-500/10 dark:to-teal-500/10 border border-emerald-200/60 dark:border-emerald-500/20 hover:shadow-card-hover hover:-translate-y-0.5 transition-all group">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shrink-0 shadow-md shadow-emerald-500/25">
                   <FileText className="h-5 w-5" />
                 </div>
@@ -224,7 +232,7 @@ export function ProjectDetailView() {
                   <p className="text-[14px] font-semibold text-emerald-700 dark:text-emerald-400 group-hover:underline">{project.docName || '打开在线文档'}</p>
                   <p className="text-[12px] text-muted-foreground truncate mt-0.5">{project.docUrl}</p>
                 </div>
-                <ExternalLink className="h-4 w-4 text-emerald-500 shrink-0" />
+                <ExternalLink className="h-4 w-4 text-emerald-500 shrink-0 group-hover:translate-x-0.5 transition-transform" />
               </a>
             </div>
           )}
@@ -238,14 +246,14 @@ export function ProjectDetailView() {
             const style = columnStyles[column.title] || columnStyles['待办']
             return (
               <DroppableColumn key={column.id} column={column}>
-                <Card className={cn('shadow-card border-border/50 overflow-hidden', style.bg)}>
+                <Card className={cn('shadow-card border-border/30 overflow-hidden bg-card/80 backdrop-blur-sm transition-all duration-200 hover:shadow-card-hover', style.bg)}>
                   {/* Column accent bar */}
                   <div className={cn('h-1 bg-gradient-to-r', style.accent)} />
                   <CardHeader className="pb-3 pt-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
                         <CardTitle className="text-[14px] font-semibold">{column.title}</CardTitle>
-                        <span className={cn('inline-flex items-center justify-center h-5 min-w-5 rounded-md px-1.5 text-[11px] font-semibold text-white', style.badge)}>
+                        <span className={cn('inline-flex items-center justify-center h-5 min-w-5 rounded-lg px-1.5 text-[11px] font-semibold text-white shadow-sm', style.badge)}>
                           {column.tasks.length}
                         </span>
                       </div>
@@ -266,7 +274,7 @@ export function ProjectDetailView() {
                           </button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <button className="h-6 w-6 rounded-lg bg-card/90 backdrop-blur-sm flex items-center justify-center border border-border/60 shadow-sm hover:bg-red-50"
+                              <button className="h-6 w-6 rounded-lg bg-card/90 backdrop-blur-sm flex items-center justify-center border border-border/60 shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20"
                                 onClick={(e) => e.stopPropagation()}>
                                 <Trash2 className="h-3 w-3 text-muted-foreground hover:text-red-500" />
                               </button>
@@ -280,7 +288,7 @@ export function ProjectDetailView() {
                       </div>
                     ))}
                     {column.tasks.length === 0 && (
-                      <div className="text-center py-10 text-[13px] text-muted-foreground/60 border-2 border-dashed border-border/30 rounded-lg mx-1">
+                      <div className="text-center py-10 text-[13px] text-muted-foreground/60 border-2 border-dashed border-border/30 rounded-lg mx-1 hover:border-primary/20 transition-colors">
                         暂无任务
                       </div>
                     )}
@@ -291,9 +299,10 @@ export function ProjectDetailView() {
           })}
         </div>
 
+        {/* Enhanced Drag Overlay with rotation and scale */}
         <DragOverlay>
           {activeTask ? (
-            <div className="w-72 opacity-90 rotate-2 shadow-float rounded-xl overflow-hidden">
+            <div className="w-72 opacity-90 rotate-2 scale-105 shadow-float rounded-xl overflow-hidden">
               <TaskCard task={activeTask} />
             </div>
           ) : null}

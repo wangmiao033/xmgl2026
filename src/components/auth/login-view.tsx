@@ -49,30 +49,48 @@ export function LoginView({ onLogin }: LoginViewProps) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50/30 to-teal-50/20 dark:from-slate-950 dark:via-emerald-950/20 dark:to-slate-900 p-4">
-      {/* Background decoration */}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50/30 to-teal-50/20 dark:from-slate-950 dark:via-emerald-950/20 dark:to-slate-900 p-4 relative overflow-hidden">
+      {/* Animated mesh gradient background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-teal-500/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/4 left-1/4 w-60 h-60 bg-emerald-400/3 rounded-full blur-3xl" />
+        <div className="absolute -top-32 -right-32 w-96 h-96 bg-emerald-500/15 dark:bg-emerald-500/10 rounded-full blur-3xl animate-float" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-teal-500/15 dark:bg-teal-500/10 rounded-full blur-3xl animate-float-slow" />
+        <div className="absolute top-1/3 left-1/5 w-72 h-72 bg-cyan-500/10 dark:bg-cyan-500/8 rounded-full blur-3xl animate-float-slow" style={{ animationDelay: '2s' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-violet-500/8 dark:bg-violet-500/6 rounded-full blur-3xl animate-float" style={{ animationDelay: '4s' }} />
       </div>
 
-      <div className="w-full max-w-[400px] animate-fade-in relative">
+      {/* Grid pattern overlay */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]">
+        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="grid-pattern" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid-pattern)" />
+        </svg>
+      </div>
+
+      <div className="w-full max-w-[400px] animate-blur-in relative z-10">
         {/* Logo & Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20 mb-4">
-            <Shield className="h-7 w-7 text-white" />
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-glow-emerald mb-4 animate-float-slow">
+            <Shield className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
             项目管理系统
           </h1>
           <p className="text-[14px] text-muted-foreground mt-1.5">
-            企业内部管理系统 · 登录验证
+            企业内部管理系统
+            <span className="mx-1.5 text-muted-foreground/40">·</span>
+            登录验证
           </p>
         </div>
 
-        {/* Login Card */}
-        <div className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-xl shadow-elevated p-8">
+        {/* Login Card - Glassmorphism */}
+        <div className="rounded-2xl border border-white/20 dark:border-white/10 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl shadow-elevated shadow-glass p-8 relative overflow-hidden">
+          {/* Subtle inner glow line at top */}
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent" />
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Error message */}
             {error && (
@@ -92,7 +110,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="请输入邮箱账号"
-                className="h-11 bg-background/80 border-border/50 text-[14px]"
+                className="h-12 rounded-xl bg-background/80 border-border/50 text-[14px] px-4 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all"
                 autoFocus
                 autoComplete="email"
               />
@@ -110,7 +128,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="请输入密码"
-                  className="h-11 bg-background/80 border-border/50 text-[14px] pr-10"
+                  className="h-12 rounded-xl bg-background/80 border-border/50 text-[14px] px-4 pr-10 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all"
                   autoComplete="current-password"
                 />
                 <button
@@ -127,7 +145,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
             <Button
               type="submit"
               disabled={loading || !email.trim() || !password.trim()}
-              className="w-full h-11 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-[14px] font-medium shadow-md shadow-emerald-500/15 transition-all"
+              className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-[14px] font-medium shadow-lg shadow-emerald-500/15 hover:shadow-lg hover:shadow-emerald-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
             >
               {loading ? (
                 <>
@@ -142,9 +160,12 @@ export function LoginView({ onLogin }: LoginViewProps) {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-6">
+        <div className="text-center mt-6 space-y-1">
           <p className="text-[12px] text-muted-foreground/60">
             授权人员方可访问 · 请妥善保管账号密码
+          </p>
+          <p className="text-[11px] text-muted-foreground/40">
+            Powered by Z.ai
           </p>
         </div>
       </div>
