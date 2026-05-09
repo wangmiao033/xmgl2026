@@ -4,7 +4,7 @@ import path from 'path'
 const bundledDatabaseUrl = `file:${path.join(process.cwd(), 'db/custom.db')}`
 const configuredDatabaseUrl = process.env.DATABASE_URL
 
-if (!configuredDatabaseUrl || configuredDatabaseUrl.includes('/home/z/')) {
+if (!configuredDatabaseUrl || configuredDatabaseUrl.startsWith('file:') || configuredDatabaseUrl.includes('/home/z/')) {
   process.env.DATABASE_URL = bundledDatabaseUrl
 }
 
