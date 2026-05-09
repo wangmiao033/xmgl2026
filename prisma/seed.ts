@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { hashPassword } from '../src/lib/auth'
 
 const prisma = new PrismaClient()
 
@@ -12,12 +13,16 @@ async function main() {
   await prisma.user.deleteMany()
 
   // Create users
+  const defaultPassword = await hashPassword('xd2025')
+  const wangmiaoPassword = '8b6a7b6ae0aba39ef19de7e2f8170a70:2885393dcb3993f15b6d1865e2f37a0da3b3fbc2494fb519709472ff74755f08f71ab9be344b2f7d2769c56ddb00043a91265141ea9902d757597688b3283e99'
+
   const user1 = await prisma.user.create({
     data: {
       email: 'zhangsan@company.com',
       name: '张三',
       avatar: '',
       role: 'admin',
+      password: defaultPassword,
     },
   })
 
@@ -27,6 +32,7 @@ async function main() {
       name: '李四',
       avatar: '',
       role: 'manager',
+      password: defaultPassword,
     },
   })
 
@@ -36,6 +42,17 @@ async function main() {
       name: '王五',
       avatar: '',
       role: 'member',
+      password: defaultPassword,
+    },
+  })
+
+  await prisma.user.create({
+    data: {
+      email: 'wangmiao@dxyx6888.com',
+      name: '王淼',
+      avatar: '',
+      role: 'admin',
+      password: wangmiaoPassword,
     },
   })
 
