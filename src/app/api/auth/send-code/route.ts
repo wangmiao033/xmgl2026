@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import crypto from 'crypto'
 import { db } from '@/lib/db'
-
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 // In-memory verification code store
 // email -> { code, expiresAt, sentAt, attempts }
@@ -45,8 +44,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const resendApiKey = process.env.RESEND_API_KEY
+    if (!resendApiKey) {
+      return NextResponse.json({ error: '邮件服务未配置' }, { status: 500 })
+    }
+
     // Generate 6-digit code
-    const code = String(require('crypto').randomInt(100000, 1000000))
+    const code = String(crypto.randomInt(100000, 1000000))
 
     // Store code
     codeStore.set(normalizedEmail, {
@@ -57,6 +61,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Send email via Resend
+    const resend = new Resend(resendApiKey)
     const { error: sendError } = await resend.emails.send({
       from: '项目管理平台 <noreply@dxyx6888.com>',
       to: [normalizedEmail],
