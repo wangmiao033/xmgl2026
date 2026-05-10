@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { verifyAuthCookieValue } from '@/lib/auth'
+import { db } from '@/lib/db'
 
 // In-memory token store (simple approach for internal tool)
 // In production, use Redis or database sessions
@@ -41,6 +43,31 @@ export function validateToken(token: string): SessionData | null {
     role: session.role,
     avatar: session.avatar,
   }
+}
+
+async function validateSessionToken(token: string): Promise<SessionData | null> {
+  const memorySession = validateToken(token)
+  if (memorySession) return memorySession
+
+  const cookiePayload = verifyAuthCookieValue(token)
+  if (!cookiePayload) return null
+
+  const user = await db.user.findUnique({
+    where: { id: cookiePayload.userId },
+    select: { id: true, email: true, name: true, role: true, avatar: true },
+  })
+
+  if (!user) return null
+
+  const session = {
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    avatar: user.avatar,
+  }
+  createSession(token, session)
+  return session
 }
 
 /**
@@ -103,7 +130,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ authenticated: false }, { status: 401 })
   }
 
-  const session = validateToken(token)
+  const session = await validateSessionToken(token)
   if (!session) {
     const response = NextResponse.json({ authenticated: false }, { status: 401 })
     response.cookies.set('session_token', '', { maxAge: 0, path: '/' })

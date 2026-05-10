@@ -1,0 +1,17 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" rx="220" fill="#06291F"/>
+  <rect x="84" y="84" width="856" height="856" rx="188" fill="url(#paint0_linear)"/>
+  <path d="M256 304C256 273.072 281.072 248 312 248H712C742.928 248 768 273.072 768 304V720C768 750.928 742.928 776 712 776H312C281.072 776 256 750.928 256 720V304Z" fill="white" fill-opacity="0.18"/>
+  <path d="M330 352C330 334.327 344.327 320 362 320H662C679.673 320 694 334.327 694 352C694 369.673 679.673 384 662 384H362C344.327 384 330 369.673 330 352Z" fill="white"/>
+  <path d="M330 480C330 462.327 344.327 448 362 448H486C503.673 448 518 462.327 518 480C518 497.673 503.673 512 486 512H362C344.327 512 330 497.673 330 480Z" fill="white" fill-opacity="0.92"/>
+  <path d="M330 608C330 590.327 344.327 576 362 576H532C549.673 576 564 590.327 564 608C564 625.673 549.673 640 532 640H362C344.327 640 330 625.673 330 608Z" fill="white" fill-opacity="0.92"/>
+  <path d="M610 576L666 632L782 516" stroke="white" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="512" y="892" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="132" font-weight="800" letter-spacing="8" fill="white">PM</text>
+  <defs>
+    <linearGradient id="paint0_linear" x1="156" y1="120" x2="872" y2="918" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3A6"/>
+      <stop offset="0.5" stop-color="#10B981"/>
+      <stop offset="1" stop-color="#0F766E"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Shield, Eye, EyeOff, Loader2 } from 'lucide-react'
 
 interface LoginViewProps {
@@ -13,9 +14,21 @@ interface LoginViewProps {
 export function LoginView({ onLogin }: LoginViewProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberAccount, setRememberAccount] = useState(true)
+  const [rememberMe, setRememberMe] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('pm-login-email')
+    const savedRememberAccount = localStorage.getItem('pm-remember-account')
+    const savedRememberMe = localStorage.getItem('pm-remember-me')
+
+    if (savedEmail) setEmail(savedEmail)
+    if (savedRememberAccount) setRememberAccount(savedRememberAccount === 'true')
+    if (savedRememberMe) setRememberMe(savedRememberMe === 'true')
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,12 +44,19 @@ export function LoginView({ onLogin }: LoginViewProps) {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+        body: JSON.stringify({ email: email.trim(), password: password.trim(), rememberMe }),
       })
 
       const data = await res.json()
 
       if (res.ok && data.user) {
+        if (rememberAccount) {
+          localStorage.setItem('pm-login-email', email.trim())
+        } else {
+          localStorage.removeItem('pm-login-email')
+        }
+        localStorage.setItem('pm-remember-account', String(rememberAccount))
+        localStorage.setItem('pm-remember-me', String(rememberMe))
         onLogin(data.user)
       } else {
         setError(data.error || '登录失败')
@@ -139,6 +159,27 @@ export function LoginView({ onLogin }: LoginViewProps) {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-xl border border-border/40 bg-background/45 px-4 py-3">
+              <label htmlFor="remember-account" className="flex items-center gap-2.5 cursor-pointer">
+                <Checkbox
+                  id="remember-account"
+                  checked={rememberAccount}
+                  onCheckedChange={(checked) => setRememberAccount(checked === true)}
+                  className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                />
+                <span className="text-[13px] text-foreground">记住账号</span>
+              </label>
+              <label htmlFor="remember-me" className="flex items-center gap-2.5 cursor-pointer">
+                <Checkbox
+                  id="remember-me"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked === true)}
+                  className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                />
+                <span className="text-[13px] text-foreground">7天免登录</span>
+              </label>
             </div>
 
             {/* Submit */}

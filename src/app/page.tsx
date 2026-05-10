@@ -43,31 +43,27 @@ export default function Home() {
   const [user, setUser] = useState<UserInfo | null>(null)
   const [checking, setChecking] = useState(true)
 
-  // Check existing session on mount
-  const checkSession = useCallback(async () => {
-    try {
-      const res = await fetch('/api/auth/session')
-      if (res.ok) {
-        const data = await res.json()
-        if (data.authenticated && data.user) {
-          setUser(data.user)
-          // Also register in session store for consistency
-          await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: 'check', user: data.user }),
-          }).catch(() => {})
-        }
-      }
-    } catch {
-      // ignore
-    }
-    setChecking(false)
-  }, [])
-
   useEffect(() => {
-    checkSession()
-  }, [checkSession])
+    let cancelled = false
+
+    fetch('/api/auth/session')
+      .then(async (res) => {
+        if (!res.ok) return
+
+        const data = await res.json()
+        if (!data.authenticated || !data.user || cancelled) return
+
+        setUser(data.user)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setChecking(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Heartbeat: keep session active every 60 seconds
   useEffect(() => {
@@ -79,12 +75,6 @@ export default function Home() {
   }, [user])
 
   const handleLogin = useCallback(async (userData: UserInfo) => {
-    // Register session in server memory
-    await fetch('/api/auth/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: 'login', user: userData }),
-    }).catch(() => {})
     setUser(userData)
   }, [])
 
@@ -123,7 +113,11 @@ export default function Home() {
         <AppHeader currentUser={user} onLogout={handleLogout} />
         <main className="flex-1 overflow-auto">
           <div className="mx-auto max-w-[1440px] p-5 lg:p-8">
-            <ViewComponent />
+            {currentView === 'dashboard' ? (
+              <DashboardView currentUser={user} />
+            ) : (
+              <ViewComponent />
+            )}
           </div>
         </main>
       </SidebarInset>
