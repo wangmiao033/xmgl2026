@@ -37,7 +37,13 @@ const statusColors: Record<string, string> = { done: '#10b981', in_progress: '#3
 const chartTabs = ['本周', '本月', '全部'] as const
 type ChartTab = typeof chartTabs[number]
 
-export function DashboardView() {
+interface DashboardViewProps {
+  currentUser?: {
+    name: string
+  } | null
+}
+
+export function DashboardView({ currentUser }: DashboardViewProps) {
   const { navigateToProject, setCurrentView } = useAppStore()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -91,6 +97,7 @@ export function DashboardView() {
   const projectsWithDocs = stats.recentProjects.filter((p: any) => p.docUrl)
 
   const todayDate = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
+  const displayName = currentUser?.name?.trim() || '同事'
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -117,7 +124,7 @@ export function DashboardView() {
             <Sparkles className="h-5 w-5 text-emerald-200 animate-pulse-soft" />
             <span className="text-emerald-100 text-[14px] font-medium">{todayDate}</span>
           </div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">{greeting}，张三</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">{greeting}，{displayName}</h1>
           <p className="text-emerald-100/80 mt-2 text-[15px] max-w-lg">
             当前有 <span className="font-semibold text-white">{stats.activeProjects}</span> 个项目进行中，{stats.inProgressTasks} 个任务待处理，完成率 {stats.completionRate}%
           </p>
