@@ -115,6 +115,8 @@ export default function Home() {
           <div className="mx-auto max-w-[1440px] p-5 lg:p-8">
             {currentView === 'dashboard' ? (
               <DashboardView currentUser={user} />
+            ) : currentView === 'project-detail' ? (
+              <ProjectDetailView currentUser={user} />
             ) : (
               <ViewComponent />
             )}

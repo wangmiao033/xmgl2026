@@ -3,7 +3,7 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { CalendarDays, GripVertical } from 'lucide-react'
+import { AlertTriangle, CalendarClock, CalendarDays, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface TaskAssignee {
@@ -33,9 +33,22 @@ const priorityConfig: Record<string, { label: string; className: string; barColo
   urgent: { label: '紧急', className: 'bg-gradient-to-r from-red-50 to-red-100/80 text-red-700 dark:from-red-500/10 dark:to-red-500/20 dark:text-red-400', barColor: 'bg-red-400 dark:bg-red-500' },
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function getDaysUntil(date?: string | null) {
+  if (!date) return null
+  return Math.ceil((startOfDay(new Date(date)).getTime() - startOfDay(new Date()).getTime()) / MS_PER_DAY)
+}
+
 export function TaskCard({ task, onClick }: TaskCardProps) {
   const priority = priorityConfig[task.priority] || priorityConfig.medium
-  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done'
+  const daysUntilDue = getDaysUntil(task.dueDate)
+  const isOverdue = daysUntilDue !== null && daysUntilDue < 0 && task.status !== 'done'
+  const isDueSoon = daysUntilDue !== null && daysUntilDue >= 0 && daysUntilDue <= 3 && task.status !== 'done'
   const isUrgent = task.priority === 'urgent'
 
   return (
@@ -62,6 +75,17 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
                 {priority.label}
               </Badge>
             </div>
+            {(isOverdue || isDueSoon) && (
+              <div className={cn(
+                'inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium',
+                isOverdue
+                  ? 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300'
+                  : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'
+              )}>
+                {isOverdue ? <AlertTriangle className="h-3 w-3" /> : <CalendarClock className="h-3 w-3" />}
+                {isOverdue ? `逾期 ${Math.abs(daysUntilDue || 0)} 天` : daysUntilDue === 0 ? '今日到期' : `${daysUntilDue} 天后到期`}
+              </div>
+            )}
             {task.description && (
               <p className="text-[12px] text-muted-foreground line-clamp-1 leading-relaxed">{task.description}</p>
             )}
@@ -89,9 +113,9 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
           {task.dueDate && (
             <div className={cn(
               'flex items-center gap-1 text-[11px] tabular-nums',
-              isOverdue ? 'text-red-500 font-medium' : 'text-muted-foreground'
+              isOverdue ? 'text-red-500 font-medium' : isDueSoon ? 'text-amber-600 font-medium' : 'text-muted-foreground'
             )}>
-              <CalendarDays className={cn('h-3 w-3', isOverdue && 'text-red-400')} />
+              <CalendarDays className={cn('h-3 w-3', isOverdue && 'text-red-400', isDueSoon && 'text-amber-500')} />
               <span>
                 {new Date(task.dueDate).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}
               </span>

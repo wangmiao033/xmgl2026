@@ -8,14 +8,15 @@ import { EditTaskDialog } from '@/components/layout/edit-task-dialog'
 import { EditProjectDialog } from '@/components/layout/edit-project-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCorners, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
-import { Plus, ArrowLeft, Trash2, ExternalLink, FileText, Pencil, Gamepad2 } from 'lucide-react'
+import { Plus, ArrowLeft, Trash2, ExternalLink, FileText, Pencil, Gamepad2, AlertTriangle, CalendarClock, CheckCircle2, Search, SlidersHorizontal, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -24,6 +25,7 @@ interface Task { id: string; title: string; description?: string | null; priorit
 interface TaskColumn { id: string; title: string; order: number; tasks: Task[] }
 interface ProjectMember { id: string; role: string; user: { id: string; name: string; email: string } }
 interface ProjectDetail { id: string; name: string; description?: string | null; status: string; priority: string; category: string; docUrl?: string | null; docName?: string | null; progress: number; startDate?: string | null; endDate?: string | null; members: ProjectMember[]; columns: TaskColumn[]; _count: { tasks: number; members: number } }
+interface ProjectDetailViewProps { currentUser?: { id: string; name: string } | null }
 
 const statusConfig: Record<string, { label: string; className: string; dotColor: string }> = {
   active: { label: '进行中', className: 'bg-gradient-to-r from-emerald-50 to-emerald-100/80 text-emerald-700 dark:from-emerald-500/10 dark:to-emerald-500/20 dark:text-emerald-400', dotColor: 'bg-emerald-500' },
@@ -47,6 +49,27 @@ const columnStyles: Record<string, { accent: string; badge: string; bg: string }
 
 const columnTitleToStatus: Record<string, string> = { '待办': 'todo', '进行中': 'in_progress', '审核中': 'review', '已完成': 'done' }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function getDaysUntil(date?: string | null) {
+  if (!date) return null
+  return Math.ceil((startOfDay(new Date(date)).getTime() - startOfDay(new Date()).getTime()) / MS_PER_DAY)
+}
+
+function isTaskOverdue(task: Task) {
+  const days = getDaysUntil(task.dueDate)
+  return days !== null && days < 0 && task.status !== 'done'
+}
+
+function isTaskDueSoon(task: Task) {
+  const days = getDaysUntil(task.dueDate)
+  return days !== null && days >= 0 && days <= 3 && task.status !== 'done'
+}
+
 function DraggableTaskCard({ task, onClick }: { task: Task; onClick?: () => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, data: { task, columnId: task.columnId } })
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 1000 } : undefined
@@ -66,7 +89,7 @@ function DroppableColumn({ column, children }: { column: TaskColumn; children: R
   )
 }
 
-export function ProjectDetailView() {
+export function ProjectDetailView({ currentUser }: ProjectDetailViewProps) {
   const { selectedProjectId, setCurrentView } = useAppStore()
   const [project, setProject] = useState<ProjectDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -77,6 +100,11 @@ export function ProjectDetailView() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [taskSearch, setTaskSearch] = useState('')
+  const [priorityFilter, setPriorityFilter] = useState('all')
+  const [assigneeFilter, setAssigneeFilter] = useState('all')
+  const [onlyMine, setOnlyMine] = useState(false)
+  const [onlyRisk, setOnlyRisk] = useState(false)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -112,8 +140,8 @@ export function ProjectDetailView() {
 
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveTask(null)
-    if (!over || !project || event.active.id === event.over?.id) return
     const { active, over } = event
+    if (!over || !project || active.id === over.id) return
     const sourceTask = project.columns.flatMap((c) => c.tasks).find((t) => t.id === active.id)
     if (!sourceTask) return
     const destColumn = project.columns.find((c) => c.id === over.id)
@@ -141,6 +169,39 @@ export function ProjectDetailView() {
   const priority = priorityConfig[project.priority] || priorityConfig.medium
   const isGame = project.category === 'game'
   const totalTasks = project.columns.reduce((sum, col) => sum + col.tasks.length, 0)
+  const allTasks = project.columns.flatMap((column) => column.tasks)
+  const doneTasks = allTasks.filter((task) => task.status === 'done').length
+  const overdueTasks = allTasks.filter(isTaskOverdue)
+  const dueSoonTasks = allTasks.filter(isTaskDueSoon)
+  const projectDaysLeft = getDaysUntil(project.endDate)
+  const elapsedPercent = project.startDate && project.endDate
+    ? Math.min(100, Math.max(0, Math.round(((Date.now() - new Date(project.startDate).getTime()) / (new Date(project.endDate).getTime() - new Date(project.startDate).getTime())) * 100)))
+    : null
+  const progressLag = elapsedPercent !== null && project.status === 'active' && project.progress + 15 < elapsedPercent
+  const projectRisk = overdueTasks.length > 0 || (projectDaysLeft !== null && projectDaysLeft < 0 && project.status !== 'completed') || progressLag
+  const filteredColumns = project.columns.map((column) => ({
+    ...column,
+    tasks: column.tasks.filter((task) => {
+      const query = taskSearch.trim().toLowerCase()
+      const matchesSearch = !query ||
+        task.title.toLowerCase().includes(query) ||
+        (task.description || '').toLowerCase().includes(query)
+      const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter
+      const matchesAssignee = assigneeFilter === 'all' || task.assignees.some((assignee) => assignee.userId === assigneeFilter)
+      const matchesMine = !onlyMine || !!currentUser?.id && task.assignees.some((assignee) => assignee.userId === currentUser.id)
+      const matchesRisk = !onlyRisk || isTaskOverdue(task) || isTaskDueSoon(task) || task.priority === 'urgent'
+      return matchesSearch && matchesPriority && matchesAssignee && matchesMine && matchesRisk
+    }),
+  }))
+  const visibleTaskCount = filteredColumns.reduce((sum, column) => sum + column.tasks.length, 0)
+  const hasActiveFilters = !!taskSearch.trim() || priorityFilter !== 'all' || assigneeFilter !== 'all' || onlyMine || onlyRisk
+  const resetTaskFilters = () => {
+    setTaskSearch('')
+    setPriorityFilter('all')
+    setAssigneeFilter('all')
+    setOnlyMine(false)
+    setOnlyRisk(false)
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -176,6 +237,11 @@ export function ProjectDetailView() {
                 <span>{project._count.members} 名成员</span>
                 {project.startDate && <span>开始: {new Date(project.startDate).toLocaleDateString('zh-CN')}</span>}
                 {project.endDate && <span>截止: {new Date(project.endDate).toLocaleDateString('zh-CN')}</span>}
+                {projectDaysLeft !== null && (
+                  <span className={cn(projectDaysLeft < 0 ? 'text-red-500 font-medium' : projectDaysLeft <= 7 ? 'text-amber-600 font-medium' : '')}>
+                    {projectDaysLeft < 0 ? `已延期 ${Math.abs(projectDaysLeft)} 天` : `剩余 ${projectDaysLeft} 天`}
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -193,6 +259,43 @@ export function ProjectDetailView() {
                   <AlertDialogFooter><AlertDialogCancel>取消</AlertDialogCancel><AlertDialogAction onClick={handleDeleteProject} className="bg-red-600 hover:bg-red-700 text-white">删除</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-xl border border-border/50 bg-background/60 p-3.5">
+              <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                任务完成
+              </div>
+              <div className="mt-2 text-xl font-semibold tabular-nums">{doneTasks}/{totalTasks}</div>
+              <p className="mt-1 text-[12px] text-muted-foreground">当前项目任务推进情况</p>
+            </div>
+            <div className={cn('rounded-xl border p-3.5', overdueTasks.length > 0 ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300' : 'border-border/50 bg-background/60')}>
+              <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                <AlertTriangle className={cn('h-4 w-4', overdueTasks.length > 0 ? 'text-red-500' : 'text-slate-400')} />
+                逾期任务
+              </div>
+              <div className="mt-2 text-xl font-semibold tabular-nums">{overdueTasks.length}</div>
+              <p className="mt-1 text-[12px] text-muted-foreground">超过截止日期未完成</p>
+            </div>
+            <div className={cn('rounded-xl border p-3.5', dueSoonTasks.length > 0 ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-300' : 'border-border/50 bg-background/60')}>
+              <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                <CalendarClock className={cn('h-4 w-4', dueSoonTasks.length > 0 ? 'text-amber-500' : 'text-slate-400')} />
+                3 天内到期
+              </div>
+              <div className="mt-2 text-xl font-semibold tabular-nums">{dueSoonTasks.length}</div>
+              <p className="mt-1 text-[12px] text-muted-foreground">需要优先跟进确认</p>
+            </div>
+            <div className={cn('rounded-xl border p-3.5', projectRisk ? 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-orange-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300')}>
+              <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                <SlidersHorizontal className="h-4 w-4" />
+                项目风险
+              </div>
+              <div className="mt-2 text-xl font-semibold">{projectRisk ? '需关注' : '正常'}</div>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                {progressLag ? `进度落后时间进度 ${elapsedPercent}%` : '按当前节奏推进'}
+              </p>
             </div>
           </div>
 
@@ -239,13 +342,86 @@ export function ProjectDetailView() {
         </CardContent>
       </Card>
 
+      <Card className="shadow-card border-border/30 bg-card/80 backdrop-blur-sm">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="relative flex-1 xl:max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
+              <Input
+                value={taskSearch}
+                onChange={(event) => setTaskSearch(event.target.value)}
+                placeholder="搜索任务标题或描述..."
+                className="h-9 bg-background/80 pl-9 text-[13px] border-border/50 focus-visible:border-emerald-400 focus-visible:ring-emerald-400/20"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-muted-foreground/70" />
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger className="h-9 w-[124px] bg-background/80 border-border/50 text-[13px]">
+                  <SelectValue placeholder="优先级" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部优先级</SelectItem>
+                  <SelectItem value="urgent">紧急</SelectItem>
+                  <SelectItem value="high">高</SelectItem>
+                  <SelectItem value="medium">中</SelectItem>
+                  <SelectItem value="low">低</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+                <SelectTrigger className="h-9 w-[132px] bg-background/80 border-border/50 text-[13px]">
+                  <SelectValue placeholder="负责人" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部负责人</SelectItem>
+                  {project.members.map((member) => (
+                    <SelectItem key={member.user.id} value={member.user.id}>{member.user.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant={onlyMine ? 'default' : 'outline'}
+                size="sm"
+                className="h-9 text-[13px]"
+                disabled={!currentUser?.id}
+                onClick={() => setOnlyMine((value) => !value)}
+              >
+                <UserRound className="h-3.5 w-3.5 mr-1.5" />
+                我的任务
+              </Button>
+              <Button
+                type="button"
+                variant={onlyRisk ? 'default' : 'outline'}
+                size="sm"
+                className="h-9 text-[13px]"
+                onClick={() => setOnlyRisk((value) => !value)}
+              >
+                <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
+                风险任务
+              </Button>
+              {hasActiveFilters && (
+                <Button type="button" variant="ghost" size="sm" className="h-9 text-[13px]" onClick={resetTaskFilters}>
+                  清空筛选
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-between text-[12px] text-muted-foreground">
+            <span>当前显示 {visibleTaskCount} / {totalTasks} 个任务</span>
+            {onlyRisk && <span className="text-amber-600 dark:text-amber-400">风险任务包含逾期、3 天内到期和紧急优先级</span>}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Kanban */}
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-          {project.columns.map((column) => {
+          {filteredColumns.map((column) => {
             const style = columnStyles[column.title] || columnStyles['待办']
+            const originalColumn = project.columns.find((item) => item.id === column.id) || column
             return (
-              <DroppableColumn key={column.id} column={column}>
+              <DroppableColumn key={column.id} column={originalColumn}>
                 <Card className={cn('shadow-card border-border/30 overflow-hidden bg-card/80 backdrop-blur-sm transition-all duration-200 hover:shadow-card-hover', style.bg)}>
                   {/* Column accent bar */}
                   <div className={cn('h-1 bg-gradient-to-r', style.accent)} />
@@ -256,6 +432,9 @@ export function ProjectDetailView() {
                         <span className={cn('inline-flex items-center justify-center h-5 min-w-5 rounded-lg px-1.5 text-[11px] font-semibold text-white shadow-sm', style.badge)}>
                           {column.tasks.length}
                         </span>
+                        {hasActiveFilters && originalColumn.tasks.length !== column.tasks.length && (
+                          <span className="text-[11px] text-muted-foreground">/ {originalColumn.tasks.length}</span>
+                        )}
                       </div>
                       <Button variant="ghost" size="sm" className="h-7 px-2 text-[12px] text-primary hover:bg-primary/10"
                         onClick={() => handleAddTask(column.id)}>
