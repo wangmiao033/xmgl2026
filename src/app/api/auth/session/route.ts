@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
+import { parseAuthCookieValue } from '@/lib/auth'
 
 // In-memory token store (simple approach for internal tool)
 // In production, use Redis or database sessions
@@ -26,7 +28,25 @@ const ONLINE_THRESHOLD = 2 * 60 * 1000 // 2 minutes
 /**
  * Validate a session token and return session data, or null if invalid.
  */
-export function validateToken(token: string): SessionData | null {
+export async function validateToken(token: string): Promise<SessionData | null> {
+  const cookiePayload = parseAuthCookieValue(token)
+  if (cookiePayload) {
+    const user = await db.user.findUnique({
+      where: { id: cookiePayload.userId },
+      select: { id: true, email: true, name: true, role: true, avatar: true },
+    })
+
+    if (!user) return null
+
+    return {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      avatar: user.avatar,
+    }
+  }
+
   const session = sessions.get(token)
   if (!session) return null
   // Check if session is expired (7 days)
@@ -103,14 +123,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ authenticated: false }, { status: 401 })
   }
 
-  const session = validateToken(token)
+  const session = await validateToken(token)
   if (!session) {
     const response = NextResponse.json({ authenticated: false }, { status: 401 })
     response.cookies.set('session_token', '', { maxAge: 0, path: '/' })
     return response
   }
 
-  // Update lastActivity on each GET request (heartbeat)
+  createSession(token, session)
   updateSessionActivity(token)
 
   return NextResponse.json({ authenticated: true, user: session })

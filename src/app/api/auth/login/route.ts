@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { verifyPassword, generateSessionToken } from '@/lib/auth'
+import { createAuthCookieValue, verifyPassword } from '@/lib/auth'
+
+const ONE_DAY_SECONDS = 60 * 60 * 24
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,9 +26,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '账号或密码错误' }, { status: 401 })
     }
 
-    const token = generateSessionToken()
-
-    // Register session in server memory
     const sessionData = {
       userId: user.id,
       email: user.email,
@@ -35,13 +34,7 @@ export async function POST(request: NextRequest) {
       avatar: user.avatar,
     }
 
-    // Register session via internal call
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    await fetch(`${baseUrl}/api/auth/session`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, user: sessionData }),
-    }).catch(() => {})
+    const token = createAuthCookieValue(user.id, ONE_DAY_SECONDS)
 
     const response = NextResponse.json({
       user: sessionData,
@@ -52,7 +45,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: ONE_DAY_SECONDS,
       path: '/',
     })
 

@@ -5,6 +5,12 @@ const KEY_LENGTH = 64
 const SCRYPT_COST = 16384
 const SCRYPT_BLOCK_SIZE = 8
 const SCRYPT_PARALLELIZATION = 1
+const AUTH_COOKIE_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'xmgl2026-local-auth-secret'
+
+interface AuthCookiePayload {
+  userId: string
+  exp: number
+}
 
 /**
  * Hash a password using scrypt with a random salt.
@@ -58,4 +64,55 @@ function timingSafeEqual(a: string, b: string): boolean {
  */
 export function generateSessionToken(): string {
   return crypto.randomBytes(32).toString('hex')
+}
+
+function base64UrlEncode(value: string): string {
+  return Buffer.from(value, 'utf8').toString('base64url')
+}
+
+function base64UrlDecode(value: string): string {
+  return Buffer.from(value, 'base64url').toString('utf8')
+}
+
+function sign(value: string): string {
+  return crypto.createHmac('sha256', AUTH_COOKIE_SECRET).update(value).digest('base64url')
+}
+
+/**
+ * Create a signed auth cookie value that can be verified without server memory.
+ */
+export function createAuthCookieValue(userId: string, maxAgeSeconds: number): string {
+  const payload: AuthCookiePayload = {
+    userId,
+    exp: Math.floor(Date.now() / 1000) + maxAgeSeconds,
+  }
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload))
+  return `${encodedPayload}.${sign(encodedPayload)}`
+}
+
+/**
+ * Parse and verify the signed auth cookie.
+ */
+export function parseAuthCookieValue(cookieValue: string): AuthCookiePayload | null {
+  const [encodedPayload, signature] = cookieValue.split('.')
+  if (!encodedPayload || !signature || !timingSafeTextEqual(signature, sign(encodedPayload))) {
+    return null
+  }
+
+  try {
+    const payload = JSON.parse(base64UrlDecode(encodedPayload)) as AuthCookiePayload
+    if (!payload.userId || !payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) {
+      return null
+    }
+    return payload
+  } catch {
+    return null
+  }
+}
+
+function timingSafeTextEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a)
+  const bufB = Buffer.from(b)
+  if (bufA.length !== bufB.length) return false
+  return crypto.timingSafeEqual(bufA, bufB)
 }

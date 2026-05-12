@@ -15,7 +15,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberAccount, setRememberAccount] = useState(true)
-  const [passwordFreeForSevenDays, setPasswordFreeForSevenDays] = useState(true)
+  const [passwordFreeForOneDay, setPasswordFreeForOneDay] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -27,7 +27,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
 
     if (savedEmail) setEmail(savedEmail)
     if (savedRememberAccount) setRememberAccount(savedRememberAccount === 'true')
-    if (savedRememberMe) setPasswordFreeForSevenDays(savedRememberMe === 'true')
+    if (savedRememberMe) setPasswordFreeForOneDay(savedRememberMe === 'true')
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,7 +44,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password: password.trim(), rememberMe: passwordFreeForSevenDays }),
+        body: JSON.stringify({ email: email.trim(), password: password.trim(), rememberMe: passwordFreeForOneDay }),
       })
 
       const data = await res.json()
@@ -56,7 +56,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
           localStorage.removeItem('pm-login-email')
         }
         localStorage.setItem('pm-remember-account', String(rememberAccount))
-        localStorage.setItem('pm-remember-me', String(passwordFreeForSevenDays))
+        localStorage.setItem('pm-remember-me', String(passwordFreeForOneDay))
         onLogin(data.user)
       } else {
         setError(data.error || '登录失败')
@@ -83,7 +83,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
                   项目管理系统
                 </h1>
                 <p className="mt-4 text-[15px] leading-7 text-slate-300">
-                  团队任务、项目进度、账号资料统一管理。登录后保持 7 天有效，下次打开可直接进入工作台。
+                  团队任务、项目进度、账号资料统一管理。登录后保持 1 天有效，下次打开可直接进入工作台。
                 </p>
               </div>
             </div>
@@ -91,7 +91,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
             <div className="grid gap-3 text-[13px] text-slate-300">
               <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
                 <CalendarCheck2 className="h-4 w-4 text-emerald-300" />
-                <span>7 天内无需重复输入密码</span>
+                <span>1 天内无需重复输入密码</span>
               </div>
               <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
                 <LockKeyhole className="h-4 w-4 text-emerald-300" />
@@ -117,7 +117,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
                 欢迎回来
               </h2>
               <p className="mt-2 text-[14px] leading-6 text-slate-500 dark:text-slate-400">
-                勾选“7 天免输入密码”后，本设备 7 天内可直接进入系统。
+                登录后本设备 1 天内可直接进入系统，刷新页面不会退出。
               </p>
             </div>
 
@@ -178,12 +178,12 @@ export function LoginView({ onLogin }: LoginViewProps) {
                 <label htmlFor="seven-days-password-free" className="flex cursor-pointer items-start gap-3 rounded-xl bg-white px-3 py-3 shadow-sm dark:bg-slate-950">
                   <Checkbox
                     id="seven-days-password-free"
-                    checked={passwordFreeForSevenDays}
-                    onCheckedChange={(checked) => setPasswordFreeForSevenDays(checked === true)}
+                    checked={passwordFreeForOneDay}
+                    onCheckedChange={(checked) => setPasswordFreeForOneDay(checked === true)}
                     className="mt-0.5 data-[state=checked]:border-emerald-600 data-[state=checked]:bg-emerald-600"
                   />
                   <span className="min-w-0">
-                    <span className="block text-[14px] font-medium text-slate-900 dark:text-slate-100">7 天免输入密码</span>
+                    <span className="block text-[14px] font-medium text-slate-900 dark:text-slate-100">1 天免输入密码</span>
                     <span className="mt-1 block text-[12px] leading-5 text-slate-500 dark:text-slate-400">
                       适合个人常用设备；公共电脑请取消勾选。
                     </span>
