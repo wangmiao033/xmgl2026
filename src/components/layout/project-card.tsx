@@ -132,7 +132,7 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
           <button
             onClick={(e) => {
               e.stopPropagation()
-              window.open(project.docUrl, '_blank')
+              window.open(project.docUrl!, '_blank')
             }}
             className="flex items-center gap-2.5 w-full px-3.5 py-2.5 rounded-xl text-[13px] font-medium bg-emerald-50/80 backdrop-blur-sm text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 hover:-translate-y-0.5 hover:shadow-sm transition-all border border-emerald-200/60 dark:border-emerald-500/20"
           >
