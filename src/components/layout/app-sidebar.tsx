@@ -288,12 +288,42 @@ export function AppSidebar({ currentUser, onLogout }: { currentUser?: { name: st
 
         <SidebarSeparator className="bg-white/[0.06] mx-4" />
 
-        {recentProjects.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-slate-500 px-4 text-[11px] uppercase tracking-wider font-medium">快捷入口</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {recentProjects.map((project) => (
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-slate-500 px-4 text-[11px] uppercase tracking-wider font-medium">快捷入口</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {/* 固定文档链接 */}
+              <SidebarMenuItem>
+                <a
+                  href="https://www.kdocs.cn/l/cfxrznQtnWtC"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    'peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded-lg p-2 text-left outline-hidden transition-all duration-200 hover:bg-white/[0.08] group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2!',
+                    'text-slate-400 hover:text-emerald-400 group'
+                  )}
+                  title="六界飞仙0.1 折版本进度表"
+                >
+                  <FileText className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110" style={{ animation: 'iconPulse 3s ease-in-out infinite' }} />
+                  <span className="truncate text-[13px] group-data-[collapsible=icon]:hidden">六界飞仙0.1折版本进度表</span>
+                </a>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <a
+                  href="https://www.kdocs.cn/l/ch4uK6S7JoiY"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    'peer/menu-button flex w-full items-center gap-3 overflow-hidden rounded-lg p-2 text-left outline-hidden transition-all duration-200 hover:bg-white/[0.08] group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2!',
+                    'text-slate-400 hover:text-emerald-400 group'
+                  )}
+                  title="帝国雄狮常规婚服版本进度表"
+                >
+                  <FileText className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110" style={{ animation: 'iconPulse 3s ease-in-out infinite' }} />
+                  <span className="truncate text-[13px] group-data-[collapsible=icon]:hidden">帝国雄狮常规婚服版本进度表</span>
+                </a>
+              </SidebarMenuItem>
+              {recentProjects.map((project) => (
                   <SidebarMenuItem key={project.id}>
                     {project.docUrl ? (
                       <a
@@ -326,7 +356,6 @@ export function AppSidebar({ currentUser, onLogout }: { currentUser?: { name: st
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4 relative">
