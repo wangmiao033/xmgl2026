@@ -1,11 +1,15 @@
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { authenticate } from '@/lib/with-auth'
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
     const { id: projectId } = await params
     const body = await request.json()
     const { title, description, priority, columnId, dueDate, assigneeIds } = body

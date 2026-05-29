@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { authenticate } from '@/lib/with-auth'
+import { encryptPassword } from '@/lib/encryption'
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
     const { id } = await params
     const body = await request.json()
     const { title, url, username, password, email, phone, notes, category, isFavorite } = body
@@ -16,7 +21,7 @@ export async function PUT(
         ...(title !== undefined && { title: title.trim() }),
         ...(url !== undefined && { url: url?.trim() || null }),
         ...(username !== undefined && { username: username?.trim() || null }),
-        ...(password !== undefined && { password: password.trim() }),
+        ...(password !== undefined && { password: encryptPassword(password.trim()) }),
         ...(email !== undefined && { email: email?.trim() || null }),
         ...(phone !== undefined && { phone: phone?.trim() || null }),
         ...(notes !== undefined && { notes: notes?.trim() || null }),
@@ -37,6 +42,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
     const { id } = await params
     await db.passwordEntry.delete({ where: { id } })
     return NextResponse.json({ success: true })

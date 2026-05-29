@@ -1,8 +1,12 @@
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { authenticate } from '@/lib/with-auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
     const projects = await db.project.findMany({
       include: {
         members: {
@@ -37,8 +41,11 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
     const body = await request.json()
     const { name, description, status, priority, category, docUrl, docName, startDate, endDate } = body
 

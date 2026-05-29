@@ -5,11 +5,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/**/*": ["./db/custom.db"],
   },
-  /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  reactStrictMode: false,
+  reactStrictMode: true,
   allowedDevOrigins: [
     "https://*.space-chatglm.site",
     "https://*.space-z.ai",

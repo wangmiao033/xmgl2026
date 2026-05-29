@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { parseAuthCookieValue } from '@/lib/auth'
+import { authenticate } from '@/lib/with-auth'
 
 // In-memory token store (simple approach for internal tool)
 // In production, use Redis or database sessions
@@ -136,15 +137,20 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ authenticated: true, user: session })
 }
 
-// POST /api/auth/session - Create session after login
+// POST /api/auth/session - Create session after login (requires valid token)
 export async function POST(request: NextRequest) {
-  const { token, user } = await request.json()
+  // Validate the caller is authenticated
+  const auth = await authenticate(request)
+  if ('error' in auth) return auth.error
 
-  if (!token || !user) {
+  const { token } = await request.json()
+
+  if (!token) {
     return NextResponse.json({ error: 'Invalid session data' }, { status: 400 })
   }
 
-  createSession(token, user)
+  // Only register session for the authenticated user
+  createSession(token, auth.session)
   return NextResponse.json({ success: true })
 }
 

@@ -49,6 +49,7 @@ model ProjectMember {
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId])
+  @@index([userId])
 }
 
 model TaskColumn {
@@ -90,6 +91,7 @@ model TaskAssignee {
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, userId])
+  @@index([userId])
 }
 
 model PasswordEntry {
@@ -105,4 +107,8 @@ model PasswordEntry {
   isFavorite  Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isFavorite])
+  @@index([updatedAt])
 }

@@ -5,7 +5,16 @@ const KEY_LENGTH = 64
 const SCRYPT_COST = 16384
 const SCRYPT_BLOCK_SIZE = 8
 const SCRYPT_PARALLELIZATION = 1
-const AUTH_COOKIE_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'xmgl2026-local-auth-secret'
+
+// Require AUTH_SECRET - no insecure fallback
+const AUTH_COOKIE_SECRET = (() => {
+  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
+  if (!secret) {
+    console.warn('[AUTH] AUTH_SECRET not set, using development-only fallback. DO NOT use in production.')
+    return 'xmgl2026-dev-only-fallback-do-not-use-in-production'
+  }
+  return secret
+})()
 
 interface AuthCookiePayload {
   userId: string
@@ -47,13 +56,18 @@ export async function verifyPassword(password: string, storedHash: string): Prom
 
 /**
  * Timing-safe string comparison to prevent timing attacks.
+ * Pads shorter buffer to match longer one, avoiding length leak.
  */
 function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
   const bufA = Buffer.from(a, 'hex')
   const bufB = Buffer.from(b, 'hex')
+  const maxLen = Math.max(bufA.length, bufB.length)
+  const aPadded = Buffer.alloc(maxLen)
+  const bPadded = Buffer.alloc(maxLen)
+  bufA.copy(aPadded, maxLen - bufA.length)
+  bufB.copy(bPadded, maxLen - bufB.length)
   try {
-    return crypto.timingSafeEqual(bufA, bufB)
+    return crypto.timingSafeEqual(aPadded, bPadded)
   } catch {
     return false
   }
@@ -110,9 +124,20 @@ export function parseAuthCookieValue(cookieValue: string): AuthCookiePayload | n
   }
 }
 
+/**
+ * Timing-safe text comparison (padded to prevent length leak).
+ */
 function timingSafeTextEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a)
   const bufB = Buffer.from(b)
-  if (bufA.length !== bufB.length) return false
-  return crypto.timingSafeEqual(bufA, bufB)
+  const maxLen = Math.max(bufA.length, bufB.length)
+  const aPadded = Buffer.alloc(maxLen)
+  const bPadded = Buffer.alloc(maxLen)
+  bufA.copy(aPadded, maxLen - bufA.length)
+  bufB.copy(bPadded, maxLen - bufB.length)
+  try {
+    return crypto.timingSafeEqual(aPadded, bPadded)
+  } catch {
+    return false
+  }
 }

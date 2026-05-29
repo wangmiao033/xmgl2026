@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { authenticate } from '@/lib/with-auth'
+import { encryptPassword } from '@/lib/encryption'
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     const category = searchParams.get('category') || 'all'
 
-    const where: any = {}
+    const where: Record<string, unknown> = {}
     if (search) {
       where.OR = [
         { title: { contains: search } },
@@ -35,6 +40,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
     const body = await request.json()
     const { title, url, username, password, email, phone, notes, category } = body
 
@@ -47,7 +55,7 @@ export async function POST(request: NextRequest) {
         title: title.trim(),
         url: url?.trim() || null,
         username: username?.trim() || null,
-        password: password.trim(),
+        password: encryptPassword(password.trim()),
         email: email?.trim() || null,
         phone: phone?.trim() || null,
         notes: notes?.trim() || null,

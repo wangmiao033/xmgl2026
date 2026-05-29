@@ -1,58 +1,49 @@
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { authenticate } from '@/lib/with-auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const totalProjects = await db.project.count()
-    const totalUsers = await db.user.count()
-    const totalTasks = await db.task.count()
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
 
-    const completedTasks = await db.task.count({
-      where: { status: 'done' },
-    })
+    // Batch query: groupBy status and priority in parallel (fix 12+ sequential queries)
+    const [taskByStatus, taskByPriority, projectByStatus, totalUsers] = await Promise.all([
+      db.task.groupBy({
+        by: ['status'],
+        _count: true,
+      }),
+      db.task.groupBy({
+        by: ['priority'],
+        _count: true,
+      }),
+      db.project.groupBy({
+        by: ['status'],
+        _count: true,
+      }),
+      db.user.count(),
+    ])
 
-    const inProgressTasks = await db.task.count({
-      where: { status: 'in_progress' },
-    })
+    // Build count maps
+    const statusMap = new Map(taskByStatus.map((t) => [t.status, t._count]))
+    const priorityMap = new Map(taskByPriority.map((t) => [t.priority, t._count]))
+    const projectStatusMap = new Map(projectByStatus.map((p) => [p.status, p._count]))
 
-    const todoTasks = await db.task.count({
-      where: { status: 'todo' },
-    })
+    const totalTasks = taskByStatus.reduce((sum, t) => sum + t._count, 0)
+    const totalProjects = projectByStatus.reduce((sum, p) => sum + p._count, 0)
 
-    const reviewTasks = await db.task.count({
-      where: { status: 'review' },
-    })
+    const completedTasks = statusMap.get('done') || 0
+    const inProgressTasks = statusMap.get('in_progress') || 0
+    const todoTasks = statusMap.get('todo') || 0
+    const reviewTasks = statusMap.get('review') || 0
+    const activeProjects = projectStatusMap.get('active') || 0
+    const completedProjects = projectStatusMap.get('completed') || 0
 
-    const activeProjects = await db.project.count({
-      where: { status: 'active' },
-    })
-
-    const completedProjects = await db.project.count({
-      where: { status: 'completed' },
-    })
-
-    const urgentTasks = await db.task.count({
-      where: { priority: 'urgent' },
-    })
-
-    const highPriorityTasks = await db.task.count({
-      where: { priority: 'high' },
-    })
-
-    const mediumPriorityTasks = await db.task.count({
-      where: { priority: 'medium' },
-    })
-
-    const lowPriorityTasks = await db.task.count({
-      where: { priority: 'low' },
-    })
-
-    // Tasks by priority
     const tasksByPriority = {
-      urgent: urgentTasks,
-      high: highPriorityTasks,
-      medium: mediumPriorityTasks,
-      low: lowPriorityTasks,
+      urgent: priorityMap.get('urgent') || 0,
+      high: priorityMap.get('high') || 0,
+      medium: priorityMap.get('medium') || 0,
+      low: priorityMap.get('low') || 0,
     }
 
     // Recent projects (last 4)

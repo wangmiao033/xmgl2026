@@ -132,8 +132,12 @@ export function SettingsView() {
       toast.error('请填写完整信息')
       return
     }
-    if (newPassword.length < 4) {
-      toast.error('新密码至少需要4个字符')
+    if (newPassword.length < 8) {
+      toast.error('新密码至少需要8个字符，需包含字母和数字')
+      return
+    }
+    if (!/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+      toast.error('密码需包含至少一个字母和一个数字')
       return
     }
     if (newPassword !== confirmPassword) {
@@ -156,7 +160,6 @@ export function SettingsView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: sessionData.user.id,
           oldPassword,
           newPassword,
         }),
@@ -357,7 +360,7 @@ export function SettingsView() {
                 type={showNewPwd ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="请输入新密码（至少4位）"
+                placeholder="请输入新密码（至少8位，含字母和数字）"
                 className="h-10 pr-10"
               />
               <button
@@ -368,8 +371,8 @@ export function SettingsView() {
                 {showNewPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {newPassword && newPassword.length > 0 && newPassword.length < 4 && (
-              <p className="text-[12px] text-amber-600 dark:text-amber-400">密码长度至少4个字符</p>
+            {newPassword && newPassword.length > 0 && newPassword.length < 8 && (
+              <p className="text-[12px] text-amber-600 dark:text-amber-400">密码长度至少8个字符，需包含字母和数字</p>
             )}
           </div>
 
@@ -400,7 +403,7 @@ export function SettingsView() {
 
           <Button
             onClick={handleChangePassword}
-            disabled={changingPwd || !oldPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 4}
+            disabled={changingPwd || !oldPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 8 || !/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)}
             className="bg-rose-600 hover:bg-rose-700 text-white w-full h-10 shadow-sm"
           >
             {changingPwd ? (

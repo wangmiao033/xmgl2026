@@ -1,11 +1,15 @@
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { authenticate } from '@/lib/with-auth'
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
     const { id } = await params
     const project = await db.project.findUnique({
       where: { id },
@@ -52,10 +56,13 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
     const { id } = await params
     const body = await request.json()
     const { name, description, status, priority, category, docUrl, docName, startDate, endDate, progress } = body
@@ -84,10 +91,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
     const { id } = await params
     await db.project.delete({
       where: { id },

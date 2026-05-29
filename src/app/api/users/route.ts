@@ -1,9 +1,13 @@
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
 import { getAllOnlineUsers } from '@/app/api/auth/session/route'
+import { authenticate } from '@/lib/with-auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
     const users = await db.user.findMany({
       include: {
         _count: {
@@ -20,24 +24,19 @@ export async function GET() {
       orderBy: { createdAt: 'asc' },
     })
 
+    // Batch query: count completed tasks per user in one query (fix N+1)
+    const completedCounts = await db.taskAssignee.groupBy({
+      by: ['userId'],
+      where: { task: { status: 'done' } },
+      _count: { id: true },
+    })
+    const countMap = new Map(completedCounts.map((c) => [c.userId, c._count.id]))
+
     const usersWithStats = users.map((user) => ({
       ...user,
-      completedTasks: 0, // Will be calculated
+      completedTasks: countMap.get(user.id) || 0,
       projectCount: user.projects?.length || 0,
     }))
-
-    // For each user, count completed tasks
-    for (let i = 0; i < usersWithStats.length; i++) {
-      const completedCount = await db.taskAssignee.count({
-        where: {
-          userId: usersWithStats[i].id,
-          task: {
-            status: 'done',
-          },
-        },
-      })
-      usersWithStats[i].completedTasks = completedCount
-    }
 
     // Get online users to enrich response
     const onlineUsers = getAllOnlineUsers()
@@ -63,15 +62,25 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
+    // Only admins can create users
+    if (auth.session.role !== 'admin') {
+      return NextResponse.json({ error: '权限不足，仅管理员可创建用户' }, { status: 403 })
+    }
+
     const body = await request.json()
     const { name, email, role } = body
     if (!name || !email) {
       return NextResponse.json({ error: '姓名和邮箱不能为空' }, { status: 400 })
     }
+    // Only admins can set admin role; default to member for safety
+    const userRole = auth.session.role === 'admin' ? (role || 'member') : 'member'
     const user = await db.user.create({
-      data: { name, email, role: role || 'member' },
+      data: { name, email, role: userRole },
     })
     return NextResponse.json(user, { status: 201 })
   } catch (error) {

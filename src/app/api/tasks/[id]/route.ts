@@ -1,11 +1,15 @@
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { NextResponse } from 'next/server'
+import { authenticate } from '@/lib/with-auth'
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
     const { id } = await params
     const body = await request.json()
     const { title, description, priority, status, columnId, dueDate, assigneeIds } = body
@@ -19,14 +23,9 @@ export async function PUT(
     if (columnId !== undefined) updateData.columnId = columnId || null
     if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null
 
-    // Handle assignee updates
+    let task
+    // Handle assignee updates atomically with transaction (fix race condition)
     if (assigneeIds !== undefined) {
-      // First delete existing assignees
-      await db.taskAssignee.deleteMany({
-        where: { taskId: id },
-      })
-
-      // Create new assignees if any
       if (assigneeIds && assigneeIds.length > 0) {
         updateData.assignees = {
           create: assigneeIds.map((userId: string) => ({
@@ -34,19 +33,46 @@ export async function PUT(
           })),
         }
       }
-    }
-
-    const task = await db.task.update({
-      where: { id },
-      data: updateData,
-      include: {
-        assignees: {
+      await db.$transaction([
+        db.taskAssignee.deleteMany({
+          where: { taskId: id },
+        }),
+        db.task.update({
+          where: { id },
+          data: updateData,
           include: {
-            user: true,
+            assignees: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        }),
+      ])
+      // Fetch the updated task
+      task = await db.task.findUnique({
+        where: { id },
+        include: {
+          assignees: {
+            include: {
+              user: true,
+            },
           },
         },
-      },
-    })
+      })
+    } else {
+      task = await db.task.update({
+        where: { id },
+        data: updateData,
+        include: {
+          assignees: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      })
+    }
 
     return NextResponse.json(task)
   } catch (error) {
@@ -56,10 +82,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
     const { id } = await params
     await db.task.delete({
       where: { id },
