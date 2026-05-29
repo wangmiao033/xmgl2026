@@ -30,9 +30,6 @@ const viewTitles: Record<string, string> = {
   'project-detail': '项目详情',
   team: '团队管理',
   settings: '系统设置',
-  'my-tasks': '我的任务',
-  calendar: '任务日历',
-  reports: '数据报表',
   passwords: '密码管理',
 }
 

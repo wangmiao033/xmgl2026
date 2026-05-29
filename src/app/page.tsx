@@ -9,9 +9,6 @@ import { ProjectsView } from '@/components/views/projects-view'
 import { ProjectDetailView } from '@/components/views/project-detail-view'
 import { TeamView } from '@/components/views/team-view'
 import { SettingsView } from '@/components/views/settings-view'
-import { MyTasksView } from '@/components/views/my-tasks-view'
-import { CalendarView } from '@/components/views/calendar-view'
-import { ReportsView } from '@/components/views/reports-view'
 import { PasswordsView } from '@/components/views/passwords-view'
 import { LoginView } from '@/components/auth/login-view'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
@@ -31,9 +28,6 @@ const viewComponents: Record<string, React.ComponentType> = {
   'project-detail': ProjectDetailView,
   team: TeamView,
   settings: SettingsView,
-  'my-tasks': MyTasksView,
-  calendar: CalendarView,
-  reports: ReportsView,
   passwords: PasswordsView,
 }
 

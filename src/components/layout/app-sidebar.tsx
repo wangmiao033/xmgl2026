@@ -6,9 +6,7 @@ import {
   LayoutDashboard,
   FolderKanban,
   CheckSquare,
-  CalendarDays,
   Users,
-  BarChart3,
   Settings,
   FileText,
   Search,
@@ -34,12 +32,9 @@ import { cn } from '@/lib/utils'
 
 const navItems: { title: string; icon: React.ElementType; view: ViewType }[] = [
   { title: '仪表板', icon: LayoutDashboard, view: 'dashboard' },
-  { title: '我的任务', icon: CheckSquare, view: 'my-tasks' },
   { title: '项目列表', icon: FolderKanban, view: 'projects' },
   { title: '密码管理', icon: KeyRound, view: 'passwords' },
-  { title: '任务日历', icon: CalendarDays, view: 'calendar' },
   { title: '团队', icon: Users, view: 'team' },
-  { title: '报表', icon: BarChart3, view: 'reports' },
   { title: '设置', icon: Settings, view: 'settings' },
 ]
 
