@@ -88,3 +88,72 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '创建用户失败' }, { status: 500 })
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
+    if (auth.session.role !== 'admin') {
+      return NextResponse.json({ error: '权限不足，仅管理员可编辑成员' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { id, name, email, role } = body
+    if (!id || !name || !email) {
+      return NextResponse.json({ error: '缺少必要参数' }, { status: 400 })
+    }
+
+    const existingUser = await db.user.findUnique({ where: { id } })
+    if (!existingUser) {
+      return NextResponse.json({ error: '成员不存在' }, { status: 404 })
+    }
+
+    const user = await db.user.update({
+      where: { id },
+      data: { name, email, role: role || existingUser.role },
+    })
+    return NextResponse.json(user)
+  } catch (error) {
+    console.error('Error updating user:', error)
+    return NextResponse.json({ error: '更新成员失败' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await authenticate(request)
+    if ('error' in auth) return auth.error
+
+    if (auth.session.role !== 'admin') {
+      return NextResponse.json({ error: '权限不足，仅管理员可删除成员' }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    if (!id) {
+      return NextResponse.json({ error: '缺少成员ID' }, { status: 400 })
+    }
+
+    if (id === auth.session.userId) {
+      return NextResponse.json({ error: '不能删除自己的账号' }, { status: 400 })
+    }
+
+    const existingUser = await db.user.findUnique({ where: { id } })
+    if (!existingUser) {
+      return NextResponse.json({ error: '成员不存在' }, { status: 404 })
+    }
+
+    // Remove task assignments for this user
+    await db.taskAssignee.deleteMany({ where: { userId: id } })
+    // Remove project memberships for this user
+    await db.projectMember.deleteMany({ where: { userId: id } })
+    // Delete the user
+    await db.user.delete({ where: { id } })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting user:', error)
+    return NextResponse.json({ error: '删除成员失败' }, { status: 500 })
+  }
+}

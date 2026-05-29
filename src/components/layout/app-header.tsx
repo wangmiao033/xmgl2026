@@ -28,7 +28,6 @@ const viewTitles: Record<string, string> = {
   dashboard: '仪表板',
   projects: '项目列表',
   'project-detail': '项目详情',
-  team: '团队管理',
   settings: '系统设置',
   passwords: '密码管理',
 }

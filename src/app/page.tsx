@@ -7,7 +7,6 @@ import { AppHeader } from '@/components/layout/app-header'
 import { DashboardView } from '@/components/views/dashboard-view'
 import { ProjectsView } from '@/components/views/projects-view'
 import { ProjectDetailView } from '@/components/views/project-detail-view'
-import { TeamView } from '@/components/views/team-view'
 import { SettingsView } from '@/components/views/settings-view'
 import { PasswordsView } from '@/components/views/passwords-view'
 import { LoginView } from '@/components/auth/login-view'
@@ -26,7 +25,6 @@ const viewComponents: Record<string, React.ComponentType> = {
   dashboard: DashboardView,
   projects: ProjectsView,
   'project-detail': ProjectDetailView,
-  team: TeamView,
   settings: SettingsView,
   passwords: PasswordsView,
 }

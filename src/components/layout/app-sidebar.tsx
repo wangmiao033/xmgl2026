@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   FolderKanban,
   CheckSquare,
-  Users,
   Settings,
   FileText,
   Search,
@@ -34,8 +33,6 @@ const navItems: { title: string; icon: React.ElementType; view: ViewType }[] = [
   { title: '仪表板', icon: LayoutDashboard, view: 'dashboard' },
   { title: '项目列表', icon: FolderKanban, view: 'projects' },
   { title: '密码管理', icon: KeyRound, view: 'passwords' },
-  { title: '团队', icon: Users, view: 'team' },
-  { title: '设置', icon: Settings, view: 'settings' },
 ]
 
 interface QuickProject {
@@ -358,17 +355,24 @@ export function AppSidebar({ currentUser, onLogout }: { currentUser?: { name: st
           </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 relative">
-        <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/[0.04] transition-all duration-200 hover:-translate-y-0.5 cursor-default">
+      <SidebarFooter className="p-3 relative">
+        <button
+          onClick={() => setCurrentView('settings')}
+          className={cn(
+            'flex items-center gap-3 px-3 py-2.5 rounded-xl w-full text-left transition-all duration-200 hover:-translate-y-0.5',
+            currentView === 'settings'
+              ? 'bg-white/[0.08] shadow-[0_0_12px_rgba(16,185,129,0.08)]'
+              : 'hover:bg-white/[0.04]'
+          )}
+        >
           <Avatar className="h-9 w-9 ring-2 ring-emerald-500/30 shadow-glow-emerald">
             <AvatarFallback className="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-400 text-sm font-medium">
               {currentUser?.name?.charAt(0) || 'U'}
             </AvatarFallback>
           </Avatar>
-          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
+          <div className="flex flex-col flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
             <span className="text-[13px] font-medium text-slate-200 flex items-center gap-1.5">
               {currentUser?.name || '用户'}
-              {/* Online status pulsing dot */}
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
@@ -376,7 +380,11 @@ export function AppSidebar({ currentUser, onLogout }: { currentUser?: { name: st
             </span>
             <span className="text-[11px] text-slate-500">{currentUser?.role === 'admin' ? '管理员' : currentUser?.role === 'manager' ? '经理' : '成员'}</span>
           </div>
-        </div>
+          <Settings className={cn(
+            'h-4 w-4 shrink-0 transition-colors group-data-[collapsible=icon]:hidden',
+            currentView === 'settings' ? 'text-emerald-400' : 'text-slate-500'
+          )} />
+        </button>
       </SidebarFooter>
 
       {/* Inline keyframes for sidebar animations */}

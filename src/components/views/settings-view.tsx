@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { useTheme } from 'next-themes'
-import { Building2, Bell, Moon, Globe, Database, Download, Trash2, Info, Palette, KeyRound, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Building2, Bell, Moon, Globe, Database, Download, Trash2, Info, Palette, KeyRound, Eye, EyeOff, Loader2, Users, UserPlus, Shield, Crown, User, Activity, CheckCircle2, FolderKanban, Pencil } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,8 +19,29 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useOnlineUsers } from '@/hooks/use-online-users'
+
+/* ========== Settings Types & Defaults ========== */
 
 interface Settings {
   companyName: string
@@ -61,6 +82,43 @@ function loadSettings(): Settings {
   return defaultSettings
 }
 
+/* ========== Team Types & Helpers ========== */
+
+interface TeamUser {
+  id: string
+  email: string
+  name: string
+  role: string
+  avatar?: string | null
+  _count: {
+    tasks: number
+  }
+  completedTasks: number
+  projectCount: number
+  isOnline: boolean
+  lastActivity: number | null
+}
+
+const roleConfig: Record<string, { label: string; className: string; icon: React.ElementType; color: string }> = {
+  admin: { label: '管理员', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', icon: Crown, color: 'from-red-500 to-rose-500' },
+  manager: { label: '经理', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', icon: Shield, color: 'from-emerald-500 to-teal-500' },
+  member: { label: '成员', className: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400', icon: User, color: 'from-sky-500 to-blue-500' },
+}
+
+function formatLastActivity(lastActivity: number | null): string {
+  if (!lastActivity) return '离线'
+  const diff = Date.now() - lastActivity
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return '刚刚活跃'
+  if (minutes < 60) return `${minutes}分钟前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}小时前`
+  const days = Math.floor(hours / 24)
+  return `${days}天前`
+}
+
+/* ========== Settings View ========== */
+
 export function SettingsView() {
   const { theme, setTheme } = useTheme()
   const [settings, setSettings] = useState<Settings>(loadSettings)
@@ -75,12 +133,157 @@ export function SettingsView() {
   const [showConfirmPwd, setShowConfirmPwd] = useState(false)
   const [changingPwd, setChangingPwd] = useState(false)
 
+  // Team management state
+  const [users, setUsers] = useState<TeamUser[]>([])
+  const [teamLoading, setTeamLoading] = useState(true)
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [addLoading, setAddLoading] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newEmail, setNewEmail] = useState('')
+  const [newRole, setNewRole] = useState('member')
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [editUser, setEditUser] = useState<TeamUser | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editRole, setEditRole] = useState('')
+  const [editLoading, setEditLoading] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteUser, setDeleteUser] = useState<TeamUser | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const { onlineUsers, onlineCount } = useOnlineUsers()
+
   const { companyName, companyDomain, taskNotify, deadlineNotify, statusNotify, emailDigest } = settings
 
   const updateSetting = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }))
   }, [])
 
+  // Team management functions
+  const fetchUsers = useCallback(() => {
+    fetch('/api/users')
+      .then((res) => res.json())
+      .then((data) => {
+        setUsers(data)
+        setTeamLoading(false)
+      })
+      .catch(() => setTeamLoading(false))
+  }, [])
+
+  useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
+
+  useEffect(() => {
+    const interval = setInterval(fetchUsers, 30000)
+    return () => clearInterval(interval)
+  }, [fetchUsers])
+
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newName.trim() || !newEmail.trim()) return
+
+    setAddLoading(true)
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newName.trim(),
+          email: newEmail.trim(),
+          role: newRole,
+        }),
+      })
+
+      if (res.ok) {
+        toast.success('成员已添加')
+        setNewName('')
+        setNewEmail('')
+        setNewRole('member')
+        setAddDialogOpen(false)
+        fetchUsers()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || '添加失败')
+      }
+    } catch (error) {
+      toast.error('添加成员失败')
+    } finally {
+      setAddLoading(false)
+    }
+  }
+
+  const handleOpenEdit = (user: TeamUser) => {
+    setEditUser(user)
+    setEditName(user.name)
+    setEditEmail(user.email)
+    setEditRole(user.role)
+    setEditDialogOpen(true)
+  }
+
+  const handleEditMember = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editUser || !editName.trim() || !editEmail.trim()) return
+
+    setEditLoading(true)
+    try {
+      const res = await fetch(`/api/users`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editUser.id,
+          name: editName.trim(),
+          email: editEmail.trim(),
+          role: editRole,
+        }),
+      })
+
+      if (res.ok) {
+        toast.success('成员信息已更新')
+        setEditDialogOpen(false)
+        setEditUser(null)
+        fetchUsers()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || '更新失败')
+      }
+    } catch {
+      toast.error('更新成员信息失败')
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  const handleOpenDelete = (user: TeamUser) => {
+    setDeleteUser(user)
+    setDeleteDialogOpen(true)
+  }
+
+  const handleDeleteMember = async () => {
+    if (!deleteUser) return
+
+    setDeleteLoading(true)
+    try {
+      const res = await fetch(`/api/users?id=${deleteUser.id}`, {
+        method: 'DELETE',
+      })
+
+      if (res.ok) {
+        toast.success('成员已删除')
+        setDeleteDialogOpen(false)
+        setDeleteUser(null)
+        fetchUsers()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || '删除失败')
+      }
+    } catch {
+      toast.error('删除成员失败')
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  // General settings functions
   const handleSave = () => {
     setSaving(true)
     setTimeout(() => {
@@ -147,7 +350,6 @@ export function SettingsView() {
 
     setChangingPwd(true)
     try {
-      // Get current user from session
       const sessionRes = await fetch('/api/auth/session')
       const sessionData = await sessionRes.json()
 
@@ -182,14 +384,21 @@ export function SettingsView() {
     }
   }
 
+  // Team stats
+  const totalTasks = users.reduce((sum, u) => sum + u._count.tasks, 0)
+  const completedTasks = users.reduce((sum, u) => sum + u.completedTasks, 0)
+  const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+  const projectsCovered = users.filter((u) => u.projectCount > 0).length
+  const projectCoverageRate = users.length > 0 ? Math.round((projectsCovered / users.length) * 100) : 0
+
   return (
-    <div className="space-y-6 max-w-2xl animate-fade-in">
+    <div className="space-y-6 max-w-4xl animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">系统设置</h1>
-        <p className="text-muted-foreground mt-1 text-[15px]">管理系统偏好设置</p>
+        <p className="text-muted-foreground mt-1 text-[15px]">管理系统偏好设置与团队成员</p>
       </div>
 
-      {/* Company settings - Enhanced */}
+      {/* Company settings */}
       <Card className="shadow-card bg-card/80 backdrop-blur-sm border-border/30 overflow-hidden hover:shadow-card-hover transition-shadow duration-300">
         <div className="h-[3px] bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500/60" />
         <CardHeader className="pb-3">
@@ -225,7 +434,7 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* Notification settings - Enhanced */}
+      {/* Notification settings */}
       <Card className="shadow-card bg-card/80 backdrop-blur-sm border-border/30 overflow-hidden hover:shadow-card-hover transition-shadow duration-300">
         <div className="h-[3px] bg-gradient-to-r from-sky-400 via-blue-400 to-sky-500/60" />
         <CardHeader className="pb-3">
@@ -279,7 +488,7 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* Theme settings - Enhanced */}
+      {/* Theme settings */}
       <Card className="shadow-card bg-card/80 backdrop-blur-sm border-border/30 overflow-hidden hover:shadow-card-hover transition-shadow duration-300">
         <div className="h-[3px] bg-gradient-to-r from-violet-400 via-purple-400 to-violet-500/60" />
         <CardHeader className="pb-3">
@@ -315,7 +524,7 @@ export function SettingsView() {
         {saving ? '保存中...' : '保存设置'}
       </Button>
 
-      {/* Account security - Enhanced */}
+      {/* Account security */}
       <Card className="shadow-card bg-card/80 backdrop-blur-sm border-border/30 overflow-hidden hover:shadow-card-hover transition-shadow duration-300">
         <div className="h-[3px] bg-gradient-to-r from-rose-400 via-pink-500 to-rose-500/60" />
         <CardHeader className="pb-3">
@@ -328,8 +537,6 @@ export function SettingsView() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-[13px] text-muted-foreground">修改登录密码，建议定期更换以保障账号安全。</p>
-
-          {/* Old password */}
           <div className="space-y-1.5">
             <Label htmlFor="old-password" className="text-[13px]">原密码</Label>
             <div className="relative">
@@ -350,8 +557,6 @@ export function SettingsView() {
               </button>
             </div>
           </div>
-
-          {/* New password */}
           <div className="space-y-1.5">
             <Label htmlFor="new-password" className="text-[13px]">新密码</Label>
             <div className="relative">
@@ -375,8 +580,6 @@ export function SettingsView() {
               <p className="text-[12px] text-amber-600 dark:text-amber-400">密码长度至少8个字符，需包含字母和数字</p>
             )}
           </div>
-
-          {/* Confirm password */}
           <div className="space-y-1.5">
             <Label htmlFor="confirm-password" className="text-[13px]">确认新密码</Label>
             <div className="relative">
@@ -400,7 +603,6 @@ export function SettingsView() {
               <p className="text-[12px] text-red-500">两次输入的密码不一致</p>
             )}
           </div>
-
           <Button
             onClick={handleChangePassword}
             disabled={changingPwd || !oldPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword || newPassword.length < 8 || !/[a-zA-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)}
@@ -415,7 +617,149 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* Data management - Enhanced */}
+      {/* Team Management */}
+      <Card className="shadow-card bg-card/80 backdrop-blur-sm border-border/30 overflow-hidden hover:shadow-card-hover transition-shadow duration-300">
+        <div className="h-[3px] bg-gradient-to-r from-indigo-400 via-blue-500 to-indigo-500/60" />
+        <CardHeader className="pb-3">
+          <CardTitle className="text-[15px] font-semibold flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-500/15 dark:to-blue-500/15 shadow-sm">
+                <Users className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              团队管理
+            </div>
+            <Button
+              onClick={() => setAddDialogOpen(true)}
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 px-3 text-[13px] shadow-sm"
+            >
+              <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+              添加成员
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <p className="text-[13px] text-muted-foreground">
+            管理团队成员，共 {users.length} 人，当前在线 {onlineCount} 人
+          </p>
+
+          {/* Team Stats */}
+          {!teamLoading && users.length > 0 && (
+            <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+              <div className="flex items-center gap-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/10 px-3 py-2.5">
+                <Activity className="h-4 w-4 text-emerald-500 shrink-0" />
+                <div>
+                  <p className="text-[11px] text-muted-foreground">在线</p>
+                  <p className="text-[15px] font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{onlineCount}<span className="text-[11px] font-normal text-muted-foreground">/{users.length}</span></p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 rounded-lg bg-sky-500/5 border border-sky-500/10 px-3 py-2.5">
+                <CheckCircle2 className="h-4 w-4 text-sky-500 shrink-0" />
+                <div>
+                  <p className="text-[11px] text-muted-foreground">任务完成率</p>
+                  <p className="text-[15px] font-bold tabular-nums">{taskCompletionRate}<span className="text-[11px] font-normal text-muted-foreground">%</span></p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 rounded-lg bg-violet-500/5 border border-violet-500/10 px-3 py-2.5">
+                <FolderKanban className="h-4 w-4 text-violet-500 shrink-0" />
+                <div>
+                  <p className="text-[11px] text-muted-foreground">项目覆盖率</p>
+                  <p className="text-[15px] font-bold tabular-nums">{projectCoverageRate}<span className="text-[11px] font-normal text-muted-foreground">%</span></p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 rounded-lg bg-amber-500/5 border border-amber-500/10 px-3 py-2.5">
+                <Users className="h-4 w-4 text-amber-500 shrink-0" />
+                <div>
+                  <p className="text-[11px] text-muted-foreground">总任务</p>
+                  <p className="text-[15px] font-bold tabular-nums">{totalTasks}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Team Members List */}
+          {teamLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-[72px] rounded-lg" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {users.map((user) => {
+                const role = roleConfig[user.role] || roleConfig.member
+                const RoleIcon = role.icon
+                return (
+                  <div
+                    key={user.id}
+                    className="flex items-center gap-3 rounded-lg border border-border/40 p-3 hover:bg-muted/30 transition-all duration-200 group"
+                  >
+                    <div className="relative shrink-0">
+                      <Avatar className="h-10 w-10 ring-2 ring-border/30 ring-offset-1 ring-offset-card">
+                        <AvatarFallback className={cn(
+                          'text-sm font-semibold',
+                          user.role === 'admin' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                          user.role === 'manager' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                          'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400'
+                        )}>
+                          {user.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {/* Online indicator */}
+                      <div className={cn(
+                        'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card',
+                        user.isOnline ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]' : 'bg-gray-300 dark:bg-gray-600'
+                      )} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[14px] font-medium text-foreground truncate">{user.name}</span>
+                        <div className={cn('h-5 w-5 rounded-full bg-gradient-to-r flex items-center justify-center', role.color)}>
+                          <RoleIcon className="h-2.5 w-2.5 text-white" />
+                        </div>
+                        {user.isOnline && (
+                          <span className="text-[11px] text-emerald-500">在线</span>
+                        )}
+                      </div>
+                      <p className="text-[12px] text-muted-foreground truncate">{user.email}</p>
+                    </div>
+                    <Badge variant="secondary" className={cn('text-[11px] px-2 py-0.5 font-medium shrink-0', role.className)}>
+                      {role.label}
+                    </Badge>
+                    <div className="hidden sm:flex items-center gap-3 text-[12px] text-muted-foreground shrink-0 tabular-nums">
+                      <span>{user._count.tasks}任务</span>
+                      <span className="text-emerald-500">{user.completedTasks}完成</span>
+                      <span className="text-sky-500">{user.projectCount}项目</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-md hover:bg-blue-50 dark:hover:bg-blue-500/10"
+                        onClick={() => handleOpenEdit(user)}
+                        title="编辑"
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-blue-500" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10"
+                        onClick={() => handleOpenDelete(user)}
+                        title="删除"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Data management */}
       <Card className="shadow-card bg-card/80 backdrop-blur-sm border-border/30 overflow-hidden hover:shadow-card-hover transition-shadow duration-300">
         <div className="h-[3px] bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500/60" />
         <CardHeader className="pb-3">
@@ -472,7 +816,7 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* About - Enhanced */}
+      {/* About */}
       <Card className="shadow-card bg-card/80 backdrop-blur-sm border-border/30 overflow-hidden hover:shadow-card-hover transition-shadow duration-300">
         <div className="h-[3px] bg-gradient-to-r from-slate-300 via-slate-400 to-slate-400/60" />
         <CardHeader className="pb-3">
@@ -499,6 +843,161 @@ export function SettingsView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Member Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/15">
+                <UserPlus className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              添加成员
+            </DialogTitle>
+            <DialogDescription>输入新成员信息</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAddMember} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="member-name">姓名 *</Label>
+              <Input
+                id="member-name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="输入成员姓名"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="member-email">邮箱 *</Label>
+              <Input
+                id="member-email"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="输入邮箱地址"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>角色</Label>
+              <Select value={newRole} onValueChange={setNewRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">管理员</SelectItem>
+                  <SelectItem value="manager">经理</SelectItem>
+                  <SelectItem value="member">成员</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAddDialogOpen(false)}>
+                取消
+              </Button>
+              <Button
+                type="submit"
+                disabled={addLoading || !newName.trim() || !newEmail.trim()}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {addLoading ? '添加中...' : '添加'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Member Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-500/15">
+                <Pencil className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              编辑成员
+            </DialogTitle>
+            <DialogDescription>修改成员信息</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditMember} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">姓名 *</Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="输入成员姓名"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">邮箱 *</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                placeholder="输入邮箱地址"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>角色</Label>
+              <Select value={editRole} onValueChange={setEditRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">管理员</SelectItem>
+                  <SelectItem value="manager">经理</SelectItem>
+                  <SelectItem value="member">成员</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                取消
+              </Button>
+              <Button
+                type="submit"
+                disabled={editLoading || !editName.trim() || !editEmail.trim()}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {editLoading ? '保存中...' : '保存'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Member Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 dark:bg-red-500/15">
+                <Trash2 className="h-4 w-4" />
+              </div>
+              删除成员
+            </DialogTitle>
+            <DialogDescription>
+              确定要删除成员 <span className="font-medium text-foreground">{deleteUser?.name}</span> 吗？此操作不可撤销，该成员关联的任务将被取消分配。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              取消
+            </Button>
+            <Button
+              onClick={handleDeleteMember}
+              disabled={deleteLoading}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleteLoading ? '删除中...' : '确认删除'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
