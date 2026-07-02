@@ -46,7 +46,7 @@ async function main() {
     },
   })
 
-  await prisma.user.create({
+  const user4 = await prisma.user.create({
     data: {
       email: 'wangmiao@dxyx6888.com',
       name: '王淼',
@@ -137,15 +137,20 @@ async function main() {
   await prisma.projectMember.createMany({
     data: [
       { projectId: project1.id, userId: user1.id, role: 'owner' },
+      { projectId: project1.id, userId: user4.id, role: 'owner' },
       { projectId: project1.id, userId: user2.id, role: 'manager' },
       { projectId: project1.id, userId: user3.id, role: 'member' },
+      { projectId: project2.id, userId: user4.id, role: 'owner' },
       { projectId: project2.id, userId: user1.id, role: 'manager' },
       { projectId: project2.id, userId: user2.id, role: 'member' },
+      { projectId: project3.id, userId: user4.id, role: 'owner' },
       { projectId: project3.id, userId: user2.id, role: 'owner' },
       { projectId: project3.id, userId: user3.id, role: 'member' },
       { projectId: project4.id, userId: user1.id, role: 'owner' },
+      { projectId: project4.id, userId: user4.id, role: 'owner' },
       { projectId: project4.id, userId: user2.id, role: 'manager' },
       { projectId: project4.id, userId: user3.id, role: 'member' },
+      { projectId: project5.id, userId: user4.id, role: 'owner' },
       { projectId: project5.id, userId: user1.id, role: 'manager' },
       { projectId: project5.id, userId: user3.id, role: 'member' },
     ],
@@ -442,6 +447,7 @@ async function main() {
     data: [
       // 六界仙尊
       { taskId: tasks[0].id, userId: user1.id },
+      { taskId: tasks[0].id, userId: user4.id },
       { taskId: tasks[0].id, userId: user3.id },
       { taskId: tasks[1].id, userId: user2.id },
       { taskId: tasks[2].id, userId: user2.id },
@@ -449,6 +455,7 @@ async function main() {
       { taskId: tasks[4].id, userId: user1.id },
       // 一起来修仙
       { taskId: tasks[5].id, userId: user1.id },
+      { taskId: tasks[5].id, userId: user4.id },
       { taskId: tasks[6].id, userId: user1.id },
       { taskId: tasks[6].id, userId: user3.id },
       { taskId: tasks[7].id, userId: user2.id },
@@ -456,11 +463,13 @@ async function main() {
       { taskId: tasks[9].id, userId: user3.id },
       // 创世封神
       { taskId: tasks[10].id, userId: user2.id },
+      { taskId: tasks[10].id, userId: user4.id },
       { taskId: tasks[11].id, userId: user2.id },
       { taskId: tasks[12].id, userId: user3.id },
       { taskId: tasks[13].id, userId: user1.id },
       // 云上征途
       { taskId: tasks[14].id, userId: user1.id },
+      { taskId: tasks[14].id, userId: user4.id },
       { taskId: tasks[14].id, userId: user2.id },
       { taskId: tasks[15].id, userId: user3.id },
       { taskId: tasks[16].id, userId: user2.id },
@@ -468,10 +477,12 @@ async function main() {
       { taskId: tasks[18].id, userId: user1.id },
       // 龙吟大陆
       { taskId: tasks[19].id, userId: user2.id },
+      { taskId: tasks[19].id, userId: user4.id },
       { taskId: tasks[20].id, userId: user3.id },
       { taskId: tasks[21].id, userId: user1.id },
       { taskId: tasks[21].id, userId: user3.id },
       { taskId: tasks[22].id, userId: user2.id },
+      { taskId: tasks[22].id, userId: user4.id },
       { taskId: tasks[23].id, userId: user3.id },
     ],
   })

@@ -25,7 +25,7 @@ interface Task { id: string; title: string; description?: string | null; priorit
 interface TaskColumn { id: string; title: string; order: number; tasks: Task[] }
 interface ProjectMember { id: string; role: string; user: { id: string; name: string; email: string } }
 interface ProjectDetail { id: string; name: string; description?: string | null; status: string; priority: string; category: string; docUrl?: string | null; docName?: string | null; progress: number; startDate?: string | null; endDate?: string | null; members: ProjectMember[]; columns: TaskColumn[]; _count: { tasks: number; members: number } }
-interface ProjectDetailViewProps { currentUser?: { id: string; name: string } | null }
+interface ProjectDetailViewProps { currentUser?: { id?: string; userId?: string; name: string } | null }
 
 const statusConfig: Record<string, { label: string; className: string; dotColor: string }> = {
   active: { label: '进行中', className: 'bg-gradient-to-r from-emerald-50 to-emerald-100/80 text-emerald-700 dark:from-emerald-500/10 dark:to-emerald-500/20 dark:text-emerald-400', dotColor: 'bg-emerald-500' },

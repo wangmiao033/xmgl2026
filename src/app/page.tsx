@@ -15,6 +15,16 @@ import { Toaster } from '@/components/ui/sonner'
 
 interface UserInfo {
   id: string
+  userId?: string
+  email: string
+  name: string
+  role: string
+  avatar: string | null
+}
+
+interface LoginUserInfo {
+  id?: string
+  userId?: string
   email: string
   name: string
   role: string
@@ -27,6 +37,13 @@ const viewComponents: Record<string, React.ComponentType> = {
   'project-detail': ProjectDetailView,
   settings: SettingsView,
   passwords: PasswordsView,
+}
+
+function normalizeUser(user: LoginUserInfo): UserInfo {
+  return {
+    ...user,
+    id: user.id || user.userId || '',
+  }
 }
 
 export default function Home() {
@@ -45,7 +62,7 @@ export default function Home() {
         const data = await res.json()
         if (!data.authenticated || !data.user || cancelled) return
 
-        setUser(data.user)
+        setUser(normalizeUser(data.user))
       })
       .catch(() => {})
       .finally(() => {
@@ -66,8 +83,8 @@ export default function Home() {
     return () => clearInterval(heartbeat)
   }, [user])
 
-  const handleLogin = useCallback((userData: UserInfo) => {
-    setUser(userData)
+  const handleLogin = useCallback((userData: LoginUserInfo) => {
+    setUser(normalizeUser(userData))
   }, [])
 
   const handleLogout = useCallback(async () => {

@@ -353,7 +353,8 @@ export function SettingsView() {
       const sessionRes = await fetch('/api/auth/session')
       const sessionData = await sessionRes.json()
 
-      if (!sessionData.authenticated || !sessionData.user?.id) {
+      const userId = sessionData.user?.id || sessionData.user?.userId
+      if (!sessionData.authenticated || !userId) {
         toast.error('登录已过期，请重新登录')
         return
       }
@@ -362,6 +363,7 @@ export function SettingsView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          userId,
           oldPassword,
           newPassword,
         }),

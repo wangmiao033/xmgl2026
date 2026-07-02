@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { AlertCircle, CalendarCheck2, Eye, EyeOff, Loader2, LockKeyhole, Mail, ShieldCheck } from 'lucide-react'
 
 interface LoginViewProps {
-  onLogin: (user: { id: string; email: string; name: string; role: string; avatar: string | null }) => void
+  onLogin: (user: { id?: string; userId?: string; email: string; name: string; role: string; avatar: string | null }) => void
 }
 
 export function LoginView({ onLogin }: LoginViewProps) {

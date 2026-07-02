@@ -14,7 +14,15 @@ export async function GET(request: NextRequest) {
             user: true,
           },
         },
-        tasks: true,
+        tasks: {
+          include: {
+            assignees: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        },
         columns: {
           orderBy: { order: 'asc' },
         },
