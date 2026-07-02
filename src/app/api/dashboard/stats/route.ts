@@ -46,9 +46,9 @@ export async function GET(request: NextRequest) {
       low: priorityMap.get('low') || 0,
     }
 
-    // Recent projects (last 4)
+    // Project management overview
     const recentProjects = await db.project.findMany({
-      take: 4,
+      take: 8,
       orderBy: { createdAt: 'desc' },
       include: {
         _count: {

@@ -30,6 +30,7 @@ interface Project {
 interface ProjectCardProps {
   project: Project
   onClick?: () => void
+  showMeta?: boolean
 }
 
 const statusConfig: Record<string, { label: string; className: string; dotColor: string }> = {
@@ -46,7 +47,7 @@ const priorityConfig: Record<string, { label: string; className: string; dotColo
   urgent: { label: '紧急', className: 'bg-gradient-to-r from-red-50 to-red-100/80 text-red-700 dark:from-red-500/10 dark:to-red-500/20 dark:text-red-400', dotColor: 'bg-red-500' },
 }
 
-export function ProjectCard({ project, onClick }: ProjectCardProps) {
+export function ProjectCard({ project, onClick, showMeta = true }: ProjectCardProps) {
   const status = statusConfig[project.status] || statusConfig.active
   const priority = priorityConfig[project.priority] || priorityConfig.medium
   const isGame = project.category === 'game'
@@ -101,10 +102,12 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
           </span>
         </div>
 
-        <div className="flex items-center gap-4 text-[13px] text-muted-foreground">
-          <span>{project.taskCount ?? 0} 个任务</span>
-          <span>{project.memberCount ?? 0} 人</span>
-        </div>
+        {showMeta && (
+          <div className="flex items-center gap-4 text-[13px] text-muted-foreground">
+            <span>{project.taskCount ?? 0} 个任务</span>
+            <span>{project.memberCount ?? 0} 人</span>
+          </div>
+        )}
 
         <div className="space-y-2">
           <div className="flex items-center justify-between text-[13px]">
@@ -141,22 +144,24 @@ export function ProjectCard({ project, onClick }: ProjectCardProps) {
           </button>
         )}
 
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex -space-x-2">
-            {(project.members || []).slice(0, 4).map((member) => (
-              <Avatar key={member.id} className="h-7 w-7 border-2 border-card shadow-sm ring-1 ring-border/20">
-                <AvatarFallback className="text-[11px] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 text-slate-600 dark:text-slate-300 font-medium">
-                  {member.user.name.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-            ))}
-            {project.memberCount && project.memberCount > 4 && (
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-muted to-muted/80 text-[11px] text-muted-foreground font-medium border-2 border-card ring-1 ring-border/20 shadow-sm">
-                +{project.memberCount - 4}
-              </div>
-            )}
+        {showMeta && (
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex -space-x-2">
+              {(project.members || []).slice(0, 4).map((member) => (
+                <Avatar key={member.id} className="h-7 w-7 border-2 border-card shadow-sm ring-1 ring-border/20">
+                  <AvatarFallback className="text-[11px] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 text-slate-600 dark:text-slate-300 font-medium">
+                    {member.user.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+              {project.memberCount && project.memberCount > 4 && (
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-muted to-muted/80 text-[11px] text-muted-foreground font-medium border-2 border-card ring-1 ring-border/20 shadow-sm">
+                  +{project.memberCount - 4}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   )

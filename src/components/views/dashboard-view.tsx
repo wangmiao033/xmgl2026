@@ -1,41 +1,50 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { StatsCard } from '@/components/layout/stats-card'
 import { ProjectCard } from '@/components/layout/project-card'
 import { useAppStore } from '@/stores/app-store'
-import { FolderKanban, ListChecks, CheckCircle2, Users, FileText, ExternalLink, ArrowRight, Sparkles, TrendingUp } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  ExternalLink,
+  FileText,
+  FolderKanban,
+  Gauge,
+  PauseCircle,
+  Sparkles,
+  Target,
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
-} from 'recharts'
+import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 
 interface DashboardStats {
   totalProjects: number
-  totalUsers: number
-  totalTasks: number
-  completedTasks: number
-  inProgressTasks: number
-  todoTasks: number
-  reviewTasks: number
   activeProjects: number
   completedProjects: number
-  completionRate: number
-  tasksByPriority: { urgent: number; high: number; medium: number; low: number }
-  recentProjects: any[]
-  recentTasks: any[]
+  recentProjects: ProjectSummary[]
 }
 
-const priorityColors: Record<string, string> = { urgent: '#ef4444', high: '#f97316', medium: '#38bdf8', low: '#94a3b8' }
-const statusColors: Record<string, string> = { done: '#10b981', in_progress: '#38bdf8', todo: '#94a3b8', review: '#f59e0b' }
-
-const chartTabs = ['本周', '本月', '全部'] as const
-type ChartTab = typeof chartTabs[number]
+interface ProjectSummary {
+  id: string
+  name: string
+  description?: string | null
+  status: string
+  priority: string
+  category?: string
+  docUrl?: string | null
+  docName?: string | null
+  progress: number
+  _count?: {
+    tasks: number
+    members: number
+  }
+  members?: any[]
+}
 
 interface DashboardViewProps {
   currentUser?: {
@@ -43,292 +52,258 @@ interface DashboardViewProps {
   } | null
 }
 
+const statusConfig: Record<string, { label: string; className: string; icon: React.ElementType }> = {
+  active: { label: '推进中', className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400', icon: Target },
+  paused: { label: '暂停', className: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400', icon: PauseCircle },
+  completed: { label: '完成', className: 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-400', icon: CheckCircle2 },
+  archived: { label: '归档', className: 'bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400', icon: FolderKanban },
+}
+
+const priorityConfig: Record<string, { label: string; className: string; bar: string }> = {
+  urgent: { label: '紧急', className: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400', bar: 'bg-red-500' },
+  high: { label: '高', className: 'bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400', bar: 'bg-orange-500' },
+  medium: { label: '中', className: 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-400', bar: 'bg-sky-500' },
+  low: { label: '低', className: 'bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400', bar: 'bg-slate-400' },
+}
+
 export function DashboardView({ currentUser }: DashboardViewProps) {
   const { navigateToProject, setCurrentView } = useAppStore()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<ChartTab>('全部')
-  const [greeting] = useState(() => {
-    const hour = new Date().getHours()
-    if (hour < 6) return '夜深了'
-    if (hour < 9) return '早上好'
-    if (hour < 12) return '上午好'
-    if (hour < 14) return '中午好'
-    if (hour < 18) return '下午好'
-    return '晚上好'
-  })
 
   useEffect(() => {
     let cancelled = false
     fetch('/api/dashboard/stats')
       .then((res) => res.json())
-      .then((data) => { if (!cancelled) { setStats(data); setLoading(false) } })
-      .catch(() => { if (!cancelled) setLoading(false) })
+      .then((data) => {
+        if (!cancelled) {
+          setStats(data)
+          setLoading(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false)
+      })
     return () => { cancelled = true }
   }, [])
 
   if (loading) {
     return (
-      <div className="space-y-8 animate-fade-in">
-        <Skeleton className="h-[120px] rounded-2xl" />
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[120px] rounded-xl" />)}
+      <div className="space-y-6 animate-fade-in">
+        <Skeleton className="h-[156px] rounded-2xl" />
+        <div className="grid gap-4 lg:grid-cols-[1.4fr_0.9fr]">
+          <Skeleton className="h-[360px] rounded-xl" />
+          <Skeleton className="h-[360px] rounded-xl" />
         </div>
       </div>
     )
   }
 
-  if (!stats) return <div className="text-center text-muted-foreground py-16">加载统计数据失败</div>
+  if (!stats) return <div className="text-center text-muted-foreground py-16">加载项目管理数据失败</div>
 
-  const taskStatusData = [
-    { name: '待办', value: stats.todoTasks, color: statusColors.todo },
-    { name: '进行中', value: stats.inProgressTasks, color: statusColors.in_progress },
-    { name: '审核中', value: stats.reviewTasks, color: statusColors.review },
-    { name: '已完成', value: stats.completedTasks, color: statusColors.done },
-  ]
-
-  const taskPriorityData = [
-    { name: '紧急', value: stats.tasksByPriority.urgent, fill: priorityColors.urgent },
-    { name: '高', value: stats.tasksByPriority.high, fill: priorityColors.high },
-    { name: '中', value: stats.tasksByPriority.medium, fill: priorityColors.medium },
-    { name: '低', value: stats.tasksByPriority.low, fill: priorityColors.low },
-  ]
-
-  const projectsWithDocs = stats.recentProjects.filter((p: any) => p.docUrl)
-
-  const todayDate = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
+  const projects = stats.recentProjects || []
+  const activeProjects = projects.filter((project) => project.status === 'active')
+  const riskProjects = projects.filter((project) => project.priority === 'urgent' || project.priority === 'high')
+  const docs = projects.filter((project) => project.docUrl)
+  const averageProgress = projects.length
+    ? Math.round(projects.reduce((sum, project) => sum + (project.progress || 0), 0) / projects.length)
+    : 0
+  const leadProject = [...projects].sort((a, b) => (b.progress || 0) - (a.progress || 0))[0]
   const displayName = currentUser?.name?.trim() || '同事'
+  const todayDate = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 p-6 lg:p-8 text-white shadow-elevated animate-gradient-shift">
-        {/* Grid pattern overlay */}
-        <div className="absolute inset-0 opacity-[0.06]" style={{
-          backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)`,
-          backgroundSize: '24px 24px'
+    <div className="space-y-6 animate-fade-in">
+      <section className="relative overflow-hidden rounded-2xl border border-emerald-200/60 bg-[linear-gradient(135deg,#064e3b_0%,#059669_48%,#0f766e_100%)] p-6 text-white shadow-elevated lg:p-7">
+        <div className="absolute inset-0 opacity-[0.08]" style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.7) 1px, transparent 1px)',
+          backgroundSize: '28px 28px',
         }} />
+        <div className="absolute -right-20 -top-24 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+        <div className="absolute bottom-0 right-12 h-24 w-24 rounded-full bg-cyan-200/10 blur-xl" />
 
-        {/* Floating decoration circles */}
-        <div className="absolute top-4 right-12 w-20 h-20 bg-white/10 rounded-full animate-float" />
-        <div className="absolute top-2 right-48 w-10 h-10 bg-white/8 rounded-full animate-float" style={{ animationDelay: '1s' }} />
-        <div className="absolute bottom-4 right-24 w-14 h-14 bg-white/6 rounded-full animate-float" style={{ animationDelay: '2s' }} />
-        <div className="absolute bottom-2 left-1/3 w-8 h-8 bg-white/10 rounded-full animate-float" style={{ animationDelay: '3.5s' }} />
-
-        {/* Original decoration */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
-        <div className="absolute bottom-0 left-1/2 w-48 h-48 bg-white/5 rounded-full translate-y-1/2" />
-
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-5 w-5 text-emerald-200 animate-pulse-soft" />
-            <span className="text-emerald-100 text-[14px] font-medium">{todayDate}</span>
-          </div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">{greeting}，{displayName}</h1>
-          <p className="text-emerald-100/80 mt-2 text-[15px] max-w-lg">
-            当前有 <span className="font-semibold text-white">{stats.activeProjects}</span> 个项目进行中，{stats.inProgressTasks} 个任务待处理，完成率 {stats.completionRate}%
-          </p>
-        </div>
-      </div>
-
-      {/* Stats Section */}
-      <div>
-        <div className="flex items-center gap-3 mb-5">
-          <h2 className="text-[18px] font-semibold">概览数据</h2>
-          <div className="h-[2px] w-12 bg-gradient-to-r from-emerald-400 to-transparent rounded-full" />
-        </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="animate-slide-up" style={{ animationDelay: '0ms' }}>
-            <StatsCard title="总项目数" value={stats.totalProjects} description={`${stats.activeProjects} 个进行中`}
-              icon={FolderKanban} iconColor="text-emerald-600 dark:text-emerald-400" iconBg="from-emerald-500/15 to-emerald-500/5" />
-          </div>
-          <div className="animate-slide-up" style={{ animationDelay: '80ms' }}>
-            <StatsCard title="进行中任务" value={stats.inProgressTasks} description={`共 ${stats.totalTasks} 个任务`}
-              icon={ListChecks} iconColor="text-sky-600 dark:text-sky-400" iconBg="from-sky-500/15 to-sky-500/5" />
-          </div>
-          <div className="animate-slide-up" style={{ animationDelay: '160ms' }}>
-            <StatsCard title="已完成任务" value={stats.completedTasks} description={`完成率 ${stats.completionRate}%`}
-              icon={CheckCircle2} iconColor="text-teal-600 dark:text-teal-400" iconBg="from-teal-500/15 to-teal-500/5" />
-          </div>
-          <div className="animate-slide-up" style={{ animationDelay: '240ms' }}>
-            <StatsCard title="团队成员" value={stats.totalUsers} description={`${stats.completedProjects} 个项目已完成`}
-              icon={Users} iconColor="text-violet-600 dark:text-violet-400" iconBg="from-violet-500/15 to-violet-500/5" />
-          </div>
-        </div>
-      </div>
-
-      {/* Documents */}
-      {projectsWithDocs.length > 0 && (
-        <Card className="shadow-card border-border/40 overflow-hidden">
-          <div className="h-[2.5px] bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400" />
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-500/15 dark:to-teal-500/15 shadow-sm">
-                <FileText className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <CardTitle className="text-[15px] font-semibold">在线文档</CardTitle>
-                <p className="text-[12px] text-muted-foreground mt-0.5">快速访问金山文档</p>
-              </div>
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-3 flex items-center gap-2 text-[13px] font-medium text-emerald-50/90">
+              <Sparkles className="h-4 w-4" />
+              <span>{todayDate}</span>
             </div>
+            <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">项目管理工作台</h1>
+            <p className="mt-2 text-[14px] leading-6 text-emerald-50/85">
+              {displayName}，这里集中查看项目进度、优先级、文档和需要关注的项目，不再用零散任务和人员数字干扰判断。
+            </p>
+          </div>
+
+          <div className="grid min-w-[280px] grid-cols-3 gap-2 rounded-xl border border-white/15 bg-white/10 p-2 backdrop-blur">
+            <div className="rounded-lg bg-white/10 px-3 py-2">
+              <p className="text-[11px] text-emerald-50/70">项目总数</p>
+              <p className="mt-1 text-xl font-semibold tabular-nums">{stats.totalProjects}</p>
+            </div>
+            <div className="rounded-lg bg-white/10 px-3 py-2">
+              <p className="text-[11px] text-emerald-50/70">推进中</p>
+              <p className="mt-1 text-xl font-semibold tabular-nums">{stats.activeProjects}</p>
+            </div>
+            <div className="rounded-lg bg-white/10 px-3 py-2">
+              <p className="text-[11px] text-emerald-50/70">平均进度</p>
+              <p className="mt-1 text-xl font-semibold tabular-nums">{averageProgress}%</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[1.35fr_0.85fr]">
+        <Card className="overflow-hidden border-border/40 bg-card/85 shadow-card">
+          <div className="h-[3px] bg-gradient-to-r from-emerald-400 via-teal-400 to-sky-400" />
+          <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+            <div>
+              <CardTitle className="text-[16px]">项目管理区域</CardTitle>
+              <p className="mt-1 text-[12px] text-muted-foreground">按进度查看当前项目推进状态</p>
+            </div>
+            <Button variant="outline" size="sm" className="h-8 rounded-lg text-[12px]" onClick={() => setCurrentView('projects')}>
+              项目列表
+              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+            </Button>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {projectsWithDocs.map((project: any) => (
-                <a key={project.id} href={project.docUrl} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-3.5 p-4 rounded-xl border border-border/40 hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-card-hover hover:-translate-y-0.5 bg-card/80 transition-all duration-300 group"
+          <CardContent className="space-y-3">
+            {projects.map((project) => {
+              const status = statusConfig[project.status] || statusConfig.active
+              const priority = priorityConfig[project.priority] || priorityConfig.medium
+              const StatusIcon = status.icon
+
+              return (
+                <button
+                  key={project.id}
+                  type="button"
+                  onClick={() => navigateToProject(project.id)}
+                  className="group w-full rounded-xl border border-border/40 bg-background/70 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-50/30 hover:shadow-card-hover dark:hover:border-emerald-500/50 dark:hover:bg-emerald-500/5"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-500/20 dark:to-teal-500/20 text-emerald-600 dark:text-emerald-400 shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110">
-                    <FileText className="h-4 w-4" />
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <StatusIcon className="h-4 w-4 text-emerald-500" />
+                        <p className="truncate text-[14px] font-semibold">{project.name}</p>
+                      </div>
+                      <p className="mt-1 line-clamp-1 text-[12px] text-muted-foreground">{project.description || project.docName || '项目资料待补充'}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className={cn('rounded-lg px-2 py-0.5 text-[11px]', status.className)}>{status.label}</Badge>
+                      <Badge variant="secondary" className={cn('rounded-lg px-2 py-0.5 text-[11px]', priority.className)}>{priority.label}优先级</Badge>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{project.docName || project.name}</p>
-                    <p className="text-[12px] text-muted-foreground truncate mt-0.5">{project.name}</p>
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_72px] sm:items-center">
+                    <Progress value={project.progress || 0} className="h-2" />
+                    <span className="text-right text-[12px] font-semibold tabular-nums text-muted-foreground">{project.progress || 0}%</span>
                   </div>
-                  <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-emerald-500 shrink-0 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </a>
-              ))}
-            </div>
+                </button>
+              )
+            })}
           </CardContent>
         </Card>
-      )}
 
-      {/* Charts */}
-      <div>
-        {/* Tab switcher */}
-        <div className="flex items-center gap-1 mb-5 p-1 bg-muted/60 rounded-lg w-fit">
-          {chartTabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={cn(
-                'px-4 py-1.5 text-[13px] font-medium rounded-md transition-all duration-200',
-                activeTab === tab
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+        <div className="space-y-4">
+          <Card className="border-border/40 bg-card/85 shadow-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-[15px]">
+                <Gauge className="h-4 w-4 text-emerald-500" />
+                进度焦点
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {leadProject ? (
+                <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/70 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                  <p className="text-[12px] text-emerald-700/70 dark:text-emerald-300/70">当前进度最高</p>
+                  <p className="mt-1 text-[16px] font-semibold text-emerald-950 dark:text-emerald-50">{leadProject.name}</p>
+                  <div className="mt-4 flex items-center gap-3">
+                    <Progress value={leadProject.progress || 0} className="h-2" />
+                    <span className="text-[13px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">{leadProject.progress || 0}%</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[13px] text-muted-foreground">暂无项目进度数据</p>
               )}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid gap-5 lg:grid-cols-2">
-          <Card className="shadow-card border-border/40 overflow-hidden backdrop-blur-sm bg-card/80">
-            <div className="h-[2.5px] bg-gradient-to-r from-sky-400 to-sky-500" />
-            <CardHeader className="pb-2 pt-5">
-              <CardTitle className="text-[15px] font-semibold flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-sky-500" />
-                任务状态分布
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[260px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={taskStatusData} barCategoryGap="20%">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 13 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '12px', fontSize: '13px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backdropFilter: 'blur(8px)' }} />
-                    <Bar dataKey="value" name="任务数" radius={[6, 6, 0, 0]}>
-                      {taskStatusData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
             </CardContent>
           </Card>
 
-          <Card className="shadow-card border-border/40 overflow-hidden backdrop-blur-sm bg-card/80">
-            <div className="h-[2.5px] bg-gradient-to-r from-amber-400 to-orange-400" />
-            <CardHeader className="pb-2 pt-5">
-              <CardTitle className="text-[15px] font-semibold flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-amber-500" />
-                任务优先级分布
+          <Card className="border-border/40 bg-card/85 shadow-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-[15px]">
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+                优先级关注
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="h-[260px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={taskPriorityData} cx="50%" cy="50%" innerRadius={65} outerRadius={95} paddingAngle={5} dataKey="value"
-                      label={({ name, value }) => `${name} ${value}`}>
-                      {taskPriorityData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
-                    </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '12px', fontSize: '13px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', backdropFilter: 'blur(8px)' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+            <CardContent className="space-y-2">
+              {riskProjects.length > 0 ? riskProjects.map((project) => {
+                const priority = priorityConfig[project.priority] || priorityConfig.medium
+                return (
+                  <button
+                    key={project.id}
+                    type="button"
+                    onClick={() => navigateToProject(project.id)}
+                    className="flex w-full items-center justify-between rounded-lg border border-border/40 px-3 py-2 text-left transition-colors hover:bg-muted/50"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-medium">{project.name}</p>
+                      <p className="text-[11px] text-muted-foreground">进度 {project.progress || 0}%</p>
+                    </div>
+                    <span className={cn('h-2 w-2 rounded-full', priority.bar)} />
+                  </button>
+                )
+              }) : (
+                <p className="text-[13px] text-muted-foreground">暂无高优先级项目</p>
+              )}
             </CardContent>
           </Card>
-        </div>
-      </div>
 
-      {/* Recent projects */}
-      <div>
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-[18px] font-semibold">所有项目</h2>
-          <Button variant="ghost" size="sm"
-            className="text-[13px] text-muted-foreground hover:text-foreground group/btn transition-all duration-300"
-            onClick={() => setCurrentView('projects')}>
-            查看全部 <ArrowRight className="h-4 w-4 ml-1 transition-transform duration-300 group-hover/btn:translate-x-1" />
+          {docs.length > 0 && (
+            <Card className="border-border/40 bg-card/85 shadow-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-[15px]">
+                  <FileText className="h-4 w-4 text-sky-500" />
+                  项目文档
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {docs.slice(0, 4).map((project) => (
+                  <a
+                    key={project.id}
+                    href={project.docUrl || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between rounded-lg border border-border/40 px-3 py-2 text-[13px] transition-colors hover:bg-muted/50"
+                  >
+                    <span className="truncate">{project.docName || project.name}</span>
+                    <ExternalLink className="ml-3 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  </a>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-[18px] font-semibold">项目矩阵</h2>
+            <p className="mt-1 text-[12px] text-muted-foreground">从项目卡片直接进入详情和在线文档</p>
+          </div>
+          <Button variant="ghost" size="sm" className="text-[13px]" onClick={() => setCurrentView('projects')}>
+            查看全部
+            <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {stats.recentProjects.map((project: any) => (
-            <ProjectCard key={project.id}
+          {projects.map((project) => (
+            <ProjectCard
+              key={project.id}
               project={{ ...project, taskCount: project._count?.tasks, memberCount: project._count?.members, members: project.members }}
-              onClick={() => navigateToProject(project.id)} />
+              showMeta={false}
+              onClick={() => navigateToProject(project.id)}
+            />
           ))}
         </div>
-      </div>
-
-      {/* Recent tasks */}
-      <div>
-        <h2 className="text-[18px] font-semibold mb-5">最近任务</h2>
-        <Card className="shadow-card border-border/40 overflow-hidden">
-          <CardContent className="p-0">
-            <div className="divide-y divide-border/40">
-              {stats.recentTasks.map((task: any) => (
-                <div key={task.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-gradient-to-r hover:from-emerald-50/50 hover:to-transparent dark:hover:from-emerald-500/5 dark:hover:to-transparent transition-all duration-200 group/task cursor-pointer">
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className={cn('h-2.5 w-2.5 rounded-full shrink-0 transition-all duration-300',
-                      task.priority === 'urgent' && 'bg-red-500 animate-pulse-soft',
-                      task.priority === 'high' && 'bg-orange-500',
-                      task.priority === 'medium' && 'bg-sky-500',
-                      task.priority === 'low' && 'bg-slate-400')} />
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-medium truncate">{task.title}</p>
-                      <p className="text-[12px] text-muted-foreground mt-0.5">{task.project?.name}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2.5 shrink-0 ml-4">
-                    <Badge variant="secondary" className={cn('text-[11px] px-2.5 py-0.5 font-medium',
-                      task.status === 'done' && 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
-                      task.status === 'in_progress' && 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-400',
-                      task.status === 'review' && 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
-                      task.status === 'todo' && 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-400',
-                    )}>
-                      {task.status === 'done' ? '已完成' : task.status === 'in_progress' ? '进行中' : task.status === 'review' ? '审核中' : '待办'}
-                    </Badge>
-                    {/* Click to navigate visual cue */}
-                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/0 group-hover/task:text-muted-foreground/60 transition-all duration-200 group-hover/task:translate-x-0.5" />
-                    {task.assignees?.length > 0 && (
-                      <div className="flex -space-x-1.5 opacity-0 group-hover/task:opacity-100 transition-opacity">
-                        {task.assignees.slice(0, 2).map((a: any) => (
-                          <div key={a.id} className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] text-muted-foreground font-medium border-2 border-card shadow-sm">
-                            {a.user.name.charAt(0)}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      </section>
     </div>
   )
 }
