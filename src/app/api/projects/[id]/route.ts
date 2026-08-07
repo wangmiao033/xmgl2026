@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authenticate } from '@/lib/with-auth'
+import { ensureGameProjectSchema } from '@/lib/ensure-game-project-schema'
 
 export async function GET(
   request: NextRequest,
@@ -9,6 +10,7 @@ export async function GET(
   try {
     const auth = await authenticate(request)
     if ('error' in auth) return auth.error
+    await ensureGameProjectSchema()
 
     const { id } = await params
     const project = await db.project.findUnique({
@@ -35,10 +37,18 @@ export async function GET(
             },
           },
         },
+        channels: {
+          orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        },
+        files: {
+          orderBy: { createdAt: 'desc' },
+        },
         _count: {
           select: {
             tasks: true,
             members: true,
+            channels: true,
+            files: true,
           },
         },
       },
@@ -62,24 +72,60 @@ export async function PUT(
   try {
     const auth = await authenticate(request)
     if ('error' in auth) return auth.error
+    await ensureGameProjectSchema()
 
     const { id } = await params
     const body = await request.json()
-    const { name, description, status, priority, category, docUrl, docName, startDate, endDate, progress } = body
+    const {
+      name,
+      description,
+      status,
+      priority,
+      category,
+      docUrl,
+      docName,
+      startDate,
+      endDate,
+      progress,
+      gameType,
+      partnerCompany,
+      contactName,
+      contactPhone,
+      cooperationMode,
+      launchDate,
+      isbn,
+      copyrightNo,
+      appRecordNo,
+      antiAddictionNo,
+      basePackageName,
+      notes,
+    } = body
 
     const project = await db.project.update({
       where: { id },
       data: {
-        ...(name !== undefined && { name }),
-        ...(description !== undefined && { description }),
+        ...(name !== undefined && { name: name?.trim() || name }),
+        ...(description !== undefined && { description: description?.trim() || null }),
         ...(status !== undefined && { status }),
         ...(priority !== undefined && { priority }),
         ...(category !== undefined && { category }),
-        ...(docUrl !== undefined && { docUrl }),
-        ...(docName !== undefined && { docName }),
+        ...(docUrl !== undefined && { docUrl: docUrl?.trim() || null }),
+        ...(docName !== undefined && { docName: docName?.trim() || null }),
         ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
         ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
         ...(progress !== undefined && { progress }),
+        ...(gameType !== undefined && { gameType: gameType?.trim() || null }),
+        ...(partnerCompany !== undefined && { partnerCompany: partnerCompany?.trim() || null }),
+        ...(contactName !== undefined && { contactName: contactName?.trim() || null }),
+        ...(contactPhone !== undefined && { contactPhone: contactPhone?.trim() || null }),
+        ...(cooperationMode !== undefined && { cooperationMode: cooperationMode?.trim() || null }),
+        ...(launchDate !== undefined && { launchDate: launchDate ? new Date(launchDate) : null }),
+        ...(isbn !== undefined && { isbn: isbn?.trim() || null }),
+        ...(copyrightNo !== undefined && { copyrightNo: copyrightNo?.trim() || null }),
+        ...(appRecordNo !== undefined && { appRecordNo: appRecordNo?.trim() || null }),
+        ...(antiAddictionNo !== undefined && { antiAddictionNo: antiAddictionNo?.trim() || null }),
+        ...(basePackageName !== undefined && { basePackageName: basePackageName?.trim() || null }),
+        ...(notes !== undefined && { notes: notes?.trim() || null }),
       },
     })
 
