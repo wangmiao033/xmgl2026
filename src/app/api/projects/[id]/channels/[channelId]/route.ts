@@ -3,21 +3,6 @@ import { db } from '@/lib/db'
 import { authenticate } from '@/lib/with-auth'
 import { ensureGameProjectSchema } from '@/lib/ensure-game-project-schema'
 
-const editableFields = [
-  'channelName',
-  'channelType',
-  'packageName',
-  'appId',
-  'owner',
-  'paramsStatus',
-  'packageStatus',
-  'testingStatus',
-  'reviewStatus',
-  'launchStatus',
-  'notes',
-  'sortOrder',
-] as const
-
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; channelId: string }> }
@@ -30,24 +15,27 @@ export async function PUT(
     const { id, channelId } = await params
     const existing = await db.projectChannel.findFirst({
       where: { id: channelId, projectId: id },
+      select: { id: true },
     })
     if (!existing) return NextResponse.json({ error: '渠道记录不存在' }, { status: 404 })
 
     const body = await request.json()
-    const data: Record<string, string | number | null> = {}
-    for (const field of editableFields) {
-      if (body[field] === undefined) continue
-      if (field === 'sortOrder') {
-        data[field] = Number(body[field]) || 0
-      } else {
-        const value = body[field]
-        data[field] = value === null ? null : String(value).trim() || null
-      }
-    }
-
     const updated = await db.projectChannel.update({
       where: { id: channelId },
-      data,
+      data: {
+        ...(body.channelName !== undefined && { channelName: String(body.channelName).trim() }),
+        ...(body.channelType !== undefined && { channelType: String(body.channelType || '').trim() || null }),
+        ...(body.packageName !== undefined && { packageName: String(body.packageName || '').trim() || null }),
+        ...(body.appId !== undefined && { appId: String(body.appId || '').trim() || null }),
+        ...(body.owner !== undefined && { owner: String(body.owner || '').trim() || null }),
+        ...(body.paramsStatus !== undefined && { paramsStatus: String(body.paramsStatus) }),
+        ...(body.packageStatus !== undefined && { packageStatus: String(body.packageStatus) }),
+        ...(body.testingStatus !== undefined && { testingStatus: String(body.testingStatus) }),
+        ...(body.reviewStatus !== undefined && { reviewStatus: String(body.reviewStatus) }),
+        ...(body.launchStatus !== undefined && { launchStatus: String(body.launchStatus) }),
+        ...(body.notes !== undefined && { notes: String(body.notes || '').trim() || null }),
+        ...(body.sortOrder !== undefined && { sortOrder: Number(body.sortOrder) || 0 }),
+      },
     })
 
     return NextResponse.json(updated)
