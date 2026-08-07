@@ -21,22 +21,36 @@ model User {
 }
 
 model Project {
-  id          String          @id @default(cuid())
-  name        String
-  description String?
-  status      String          @default("active") // active, paused, completed, archived
-  priority    String          @default("medium") // low, medium, high, urgent
-  category    String          @default("other") // game, tool, website, other
-  docUrl      String?
-  docName     String?
-  startDate   DateTime?
-  endDate     DateTime?
-  progress    Int             @default(0) // 0-100
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  members     ProjectMember[]
-  tasks       Task[]
-  columns     TaskColumn[]
+  id               String          @id @default(cuid())
+  name             String
+  description      String?
+  status           String          @default("active") // active, paused, completed, archived
+  priority         String          @default("medium") // low, medium, high, urgent
+  category         String          @default("other") // game, tool, website, other
+  docUrl           String?
+  docName          String?
+  startDate        DateTime?
+  endDate          DateTime?
+  progress         Int             @default(0) // 0-100
+  gameType         String?
+  partnerCompany   String?
+  contactName      String?
+  contactPhone     String?
+  cooperationMode  String?
+  launchDate       DateTime?
+  isbn             String?
+  copyrightNo      String?
+  appRecordNo      String?
+  antiAddictionNo  String?
+  basePackageName  String?
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  members          ProjectMember[]
+  tasks            Task[]
+  columns          TaskColumn[]
+  channels         ProjectChannel[]
+  files            ProjectFile[]
 }
 
 model ProjectMember {
@@ -92,6 +106,44 @@ model TaskAssignee {
 
   @@unique([taskId, userId])
   @@index([userId])
+}
+
+model ProjectChannel {
+  id             String   @id @default(cuid())
+  projectId      String
+  channelName    String
+  channelType    String?
+  packageName    String?
+  appId          String?
+  owner          String?
+  paramsStatus   String   @default("pending")
+  packageStatus  String   @default("pending")
+  testingStatus  String   @default("pending")
+  reviewStatus   String   @default("pending")
+  launchStatus   String   @default("pending")
+  notes          String?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([projectId, sortOrder])
+}
+
+model ProjectFile {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  url       String
+  category  String   @default("other")
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([category])
 }
 
 model PasswordEntry {
