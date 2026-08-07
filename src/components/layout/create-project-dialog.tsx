@@ -14,14 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Plus, Link } from 'lucide-react'
+import { Plus, Gamepad2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface CreateProjectDialogProps {
@@ -32,23 +25,39 @@ export function CreateProjectDialog({ onCreated }: CreateProjectDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [priority, setPriority] = useState('medium')
-  const [category, setCategory] = useState('game')
-  const [docUrl, setDocUrl] = useState('')
-  const [docName, setDocName] = useState('')
+  const [gameType, setGameType] = useState('')
+  const [partnerCompany, setPartnerCompany] = useState('')
+  const [contactName, setContactName] = useState('')
+  const [contactPhone, setContactPhone] = useState('')
+  const [cooperationMode, setCooperationMode] = useState('')
   const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const [launchDate, setLaunchDate] = useState('')
+  const [basePackageName, setBasePackageName] = useState('')
+  const [isbn, setIsbn] = useState('')
+  const [copyrightNo, setCopyrightNo] = useState('')
+  const [appRecordNo, setAppRecordNo] = useState('')
+  const [antiAddictionNo, setAntiAddictionNo] = useState('')
+  const [docName, setDocName] = useState('')
+  const [docUrl, setDocUrl] = useState('')
+  const [notes, setNotes] = useState('')
 
   const resetForm = () => {
     setName('')
-    setDescription('')
-    setPriority('medium')
-    setCategory('game')
-    setDocUrl('')
-    setDocName('')
+    setGameType('')
+    setPartnerCompany('')
+    setContactName('')
+    setContactPhone('')
+    setCooperationMode('')
     setStartDate('')
-    setEndDate('')
+    setLaunchDate('')
+    setBasePackageName('')
+    setIsbn('')
+    setCopyrightNo('')
+    setAppRecordNo('')
+    setAntiAddictionNo('')
+    setDocName('')
+    setDocUrl('')
+    setNotes('')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,24 +71,39 @@ export function CreateProjectDialog({ onCreated }: CreateProjectDialogProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
-          description: description.trim() || undefined,
-          priority,
-          category,
-          docUrl: docUrl.trim() || undefined,
-          docName: docName.trim() || undefined,
+          category: 'game',
+          status: 'active',
+          gameType: gameType.trim() || undefined,
+          partnerCompany: partnerCompany.trim() || undefined,
+          contactName: contactName.trim() || undefined,
+          contactPhone: contactPhone.trim() || undefined,
+          cooperationMode: cooperationMode.trim() || undefined,
           startDate: startDate || undefined,
-          endDate: endDate || undefined,
+          launchDate: launchDate || undefined,
+          basePackageName: basePackageName.trim() || undefined,
+          isbn: isbn.trim() || undefined,
+          copyrightNo: copyrightNo.trim() || undefined,
+          appRecordNo: appRecordNo.trim() || undefined,
+          antiAddictionNo: antiAddictionNo.trim() || undefined,
+          docName: docName.trim() || undefined,
+          docUrl: docUrl.trim() || undefined,
+          notes: notes.trim() || undefined,
         }),
       })
 
-      if (res.ok) {
-        toast.success('项目创建成功')
-        setOpen(false)
-        resetForm()
-        onCreated?.()
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error || '项目创建失败')
+        return
       }
+
+      toast.success('项目创建成功')
+      setOpen(false)
+      resetForm()
+      onCreated?.()
     } catch (error) {
       console.error('Error creating project:', error)
+      toast.error('项目创建失败')
     } finally {
       setLoading(false)
     }
@@ -88,118 +112,73 @@ export function CreateProjectDialog({ onCreated }: CreateProjectDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+        <Button className="bg-emerald-600 text-white hover:bg-emerald-700">
           <Plus className="mr-2 h-4 w-4" />
           新建项目
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[720px]">
         <DialogHeader>
-          <DialogTitle>新建项目</DialogTitle>
-          <DialogDescription>填写以下信息创建新的项目</DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            <Gamepad2 className="h-5 w-5 text-emerald-600" />
+            新建游戏项目
+          </DialogTitle>
+          <DialogDescription>
+            先录入项目固定资料。渠道、包名和审核进度进入项目后再维护。
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">项目名称 *</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="例如：六界仙尊、创世封神"
-              required
-            />
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="project-name">项目 / 游戏名称 *</Label>
+              <Input
+                id="project-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="例如：云上征途"
+                required
+              />
+            </div>
+            <Field label="游戏类型" value={gameType} onChange={setGameType} placeholder="例如：三国卡牌 / 仙侠 / SLG" />
+            <Field label="合作模式" value={cooperationMode} onChange={setCooperationMode} placeholder="例如：0.05折实付结算 / 常规联运" />
+            <Field label="研发 / 合作方" value={partnerCompany} onChange={setPartnerCompany} placeholder="公司名称" />
+            <Field label="联系人" value={contactName} onChange={setContactName} placeholder="联系人姓名" />
+            <Field label="联系方式" value={contactPhone} onChange={setContactPhone} placeholder="手机 / 微信" />
+            <Field label="基础包名" value={basePackageName} onChange={setBasePackageName} placeholder="com.xxx.game" />
+            <DateField label="接入日期" value={startDate} onChange={setStartDate} />
+            <DateField label="计划首发" value={launchDate} onChange={setLaunchDate} />
           </div>
+
+          <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
+            <p className="mb-3 text-sm font-medium">资质信息（可后补）</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="版号 / ISBN" value={isbn} onChange={setIsbn} placeholder="ISBN ..." />
+              <Field label="软著登记号" value={copyrightNo} onChange={setCopyrightNo} placeholder="2026SR..." />
+              <Field label="APP 备案号" value={appRecordNo} onChange={setAppRecordNo} placeholder="备案号" />
+              <Field label="防沉迷备案码" value={antiAddictionNo} onChange={setAntiAddictionNo} placeholder="备案码" />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
+            <p className="mb-3 text-sm font-medium">原始资料链接（可选）</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="资料名称" value={docName} onChange={setDocName} placeholder="例如：原项目进度表" />
+              <Field label="资料链接" value={docUrl} onChange={setDocUrl} placeholder="https://..." />
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label htmlFor="description">项目描述</Label>
+            <Label htmlFor="project-notes">项目备注</Label>
             <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="简要描述项目内容和目标"
-              rows={2}
+              id="project-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="其他需要长期保留的项目说明"
+              rows={3}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>项目类型</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="game">游戏项目</SelectItem>
-                  <SelectItem value="tool">工具项目</SelectItem>
-                  <SelectItem value="website">网站项目</SelectItem>
-                  <SelectItem value="other">其他</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>优先级</Label>
-              <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">低</SelectItem>
-                  <SelectItem value="medium">中</SelectItem>
-                  <SelectItem value="high">高</SelectItem>
-                  <SelectItem value="urgent">紧急</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Document link section */}
-          <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Link className="h-4 w-4 text-emerald-500" />
-              在线文档链接（可选）
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="docName" className="text-xs text-muted-foreground">文档名称</Label>
-              <Input
-                id="docName"
-                value={docName}
-                onChange={(e) => setDocName(e.target.value)}
-                placeholder="例如：六界仙尊进度表"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="docUrl" className="text-xs text-muted-foreground">文档地址</Label>
-              <Input
-                id="docUrl"
-                value={docUrl}
-                onChange={(e) => setDocUrl(e.target.value)}
-                placeholder="https://www.kdocs.cn/l/..."
-              />
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              支持金山文档、腾讯文档等在线协作文档链接
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">开始日期</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="endDate">截止日期</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-          </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               取消
@@ -207,7 +186,7 @@ export function CreateProjectDialog({ onCreated }: CreateProjectDialogProps) {
             <Button
               type="submit"
               disabled={loading || !name.trim()}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
               {loading ? '创建中...' : '创建项目'}
             </Button>
@@ -215,5 +194,41 @@ export function CreateProjectDialog({ onCreated }: CreateProjectDialogProps) {
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+    </div>
+  )
+}
+
+function DateField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
   )
 }

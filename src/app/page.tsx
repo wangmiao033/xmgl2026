@@ -6,7 +6,7 @@ import { AppSidebar } from '@/components/layout/app-sidebar'
 import { AppHeader } from '@/components/layout/app-header'
 import { DashboardView } from '@/components/views/dashboard-view'
 import { ProjectsView } from '@/components/views/projects-view'
-import { ProjectDetailView } from '@/components/views/project-detail-view'
+import { GameProjectDetailView } from '@/components/views/game-project-detail-view'
 import { SettingsView } from '@/components/views/settings-view'
 import { PasswordsView } from '@/components/views/passwords-view'
 import { LoginView } from '@/components/auth/login-view'
@@ -34,7 +34,7 @@ interface LoginUserInfo {
 const viewComponents: Record<string, React.ComponentType> = {
   dashboard: DashboardView,
   projects: ProjectsView,
-  'project-detail': ProjectDetailView,
+  'project-detail': GameProjectDetailView,
   settings: SettingsView,
   passwords: PasswordsView,
 }
@@ -74,7 +74,6 @@ export default function Home() {
     }
   }, [])
 
-  // Heartbeat: keep session active every 60 seconds
   useEffect(() => {
     if (!user) return
     const heartbeat = setInterval(() => {
@@ -92,7 +91,6 @@ export default function Home() {
     setUser(null)
   }, [])
 
-  // Show loading while checking session
   if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -104,7 +102,6 @@ export default function Home() {
     )
   }
 
-  // Show login page if not authenticated
   if (!user) {
     return (
       <>
@@ -114,18 +111,17 @@ export default function Home() {
     )
   }
 
-  // Show main app
   return (
     <SidebarProvider>
       <AppSidebar currentUser={user} onLogout={handleLogout} />
       <SidebarInset>
         <AppHeader currentUser={user} onLogout={handleLogout} />
         <main className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-[1440px] p-5 lg:p-8">
+          <div className="mx-auto max-w-[1600px] p-5 lg:p-8">
             {currentView === 'dashboard' ? (
               <DashboardView currentUser={user} />
             ) : currentView === 'project-detail' ? (
-              <ProjectDetailView currentUser={user} />
+              <GameProjectDetailView />
             ) : (
               <ViewComponent />
             )}

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authenticate } from '@/lib/with-auth'
+import { ensureGameProjectSchema } from '@/lib/ensure-game-project-schema'
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await authenticate(request)
     if ('error' in auth) return auth.error
+    await ensureGameProjectSchema()
 
-    // Batch query: groupBy status and priority in parallel (fix 12+ sequential queries)
     const [taskByStatus, taskByPriority, projectByStatus, totalUsers] = await Promise.all([
       db.task.groupBy({
         by: ['status'],
@@ -24,7 +25,6 @@ export async function GET(request: NextRequest) {
       db.user.count(),
     ])
 
-    // Build count maps
     const statusMap = new Map(taskByStatus.map((t) => [t.status, t._count]))
     const priorityMap = new Map(taskByPriority.map((t) => [t.priority, t._count]))
     const projectStatusMap = new Map(projectByStatus.map((p) => [p.status, p._count]))
@@ -46,7 +46,6 @@ export async function GET(request: NextRequest) {
       low: priorityMap.get('low') || 0,
     }
 
-    // Project management overview
     const recentProjects = await db.project.findMany({
       take: 8,
       orderBy: { createdAt: 'desc' },
@@ -66,7 +65,6 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Recent tasks
     const recentTasks = await db.task.findMany({
       take: 6,
       orderBy: { createdAt: 'desc' },
