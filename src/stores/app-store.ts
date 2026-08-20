@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type ViewType = 'dashboard' | 'projects' | 'project-detail' | 'settings' | 'passwords'
+export type ViewType = 'dashboard' | 'projects' | 'project-detail' | 'documents' | 'settings' | 'passwords'
 
 interface AppState {
   currentView: ViewType
