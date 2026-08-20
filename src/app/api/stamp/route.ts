@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     .png()
     .toBuffer();
 
-  return new NextResponse(result, {
+  return new NextResponse(new Uint8Array(result), {
     headers: {
       "Content-Type": "image/png",
       "Content-Disposition": "attachment; filename=stamp.png",

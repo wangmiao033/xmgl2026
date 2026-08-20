@@ -112,7 +112,6 @@ export function ProjectsView() {
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
     fetch('/api/projects')
       .then((res) => res.json())
       .then((data) => {
@@ -126,6 +125,11 @@ export function ProjectsView() {
       })
     return () => { cancelled = true }
   }, [refreshKey])
+
+  const refreshProjects = () => {
+    setLoading(true)
+    setRefreshKey((key) => key + 1)
+  }
 
   const filteredProjects = useMemo(() => projects.filter((project) => {
     const query = search.trim().toLowerCase()
@@ -153,7 +157,7 @@ export function ProjectsView() {
           </div>
           <p className="mt-1 text-[14px] text-muted-foreground">一个游戏一个项目，渠道接入和资料都收在项目里面。</p>
         </div>
-        <CreateProjectDialog onCreated={() => setRefreshKey((key) => key + 1)} />
+        <CreateProjectDialog onCreated={refreshProjects} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -203,7 +207,7 @@ export function ProjectsView() {
               key={project.id}
               project={project}
               onOpen={() => navigateToProject(project.id)}
-              onCopied={() => setRefreshKey((key) => key + 1)}
+              onCopied={refreshProjects}
             />
           ))}
         </div>

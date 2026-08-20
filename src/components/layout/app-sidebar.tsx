@@ -11,6 +11,7 @@ import {
   Search,
   X,
   KeyRound,
+  Stamp,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -32,6 +33,7 @@ import { cn } from '@/lib/utils'
 const navItems: { title: string; icon: React.ElementType; view: ViewType }[] = [
   { title: '仪表板', icon: LayoutDashboard, view: 'dashboard' },
   { title: '项目列表', icon: FolderKanban, view: 'projects' },
+  { title: '资质工具', icon: Stamp, view: 'qualification-tools' },
   { title: '密码管理', icon: KeyRound, view: 'passwords' },
 ]
 

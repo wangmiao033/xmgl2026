@@ -53,7 +53,7 @@ export default function StampPage() {
 
         {result && <div className="mt-8">
           <h2 className="font-bold mb-3">预览</h2>
-          <img src={result} className="max-w-full border" />
+          <img src={result} alt="盖章文件预览" className="max-w-full border" />
           <a href={result} download="熊动盖章版.png" className="inline-block mt-4 underline">下载文件</a>
         </div>}
       </div>
