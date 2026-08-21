@@ -1,13 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Archive,
   BadgeCheck,
   CheckCircle2,
   Download,
   FileImage,
-  ImagePlus,
   Loader2,
   RotateCcw,
   Stamp,
@@ -17,7 +16,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Slider } from '@/components/ui/slider'
@@ -40,52 +38,16 @@ interface WorkFile {
 
 interface StampOptions {
   position: PositionKey
-  sizePercent: number
   opacity: number
   angle: number
 }
 
 const targetBytes = 950_000
 const oneMegabyte = 1_000_000
-const stampStorageKey = 'xmgl2026-selected-stamp-v1'
-const stampStorageEvent = 'xmgl2026-stamp-changed'
-
-interface StoredStamp {
-  name: string
-  dataUrl: string
-}
-
-function subscribeToStoredStamp(callback: () => void) {
-  window.addEventListener('storage', callback)
-  window.addEventListener(stampStorageEvent, callback)
-  return () => {
-    window.removeEventListener('storage', callback)
-    window.removeEventListener(stampStorageEvent, callback)
-  }
-}
-
-function getStoredStampSnapshot() {
-  return window.localStorage.getItem(stampStorageKey)
-}
-
-function parseStoredStamp(value: string | null): StoredStamp | null {
-  if (!value) return null
-  try {
-    const stamp = JSON.parse(value) as Partial<StoredStamp>
-    return stamp.name && stamp.dataUrl ? { name: stamp.name, dataUrl: stamp.dataUrl } : null
-  } catch {
-    return null
-  }
-}
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('章图读取失败'))
-    reader.onerror = () => reject(new Error('章图读取失败'))
-    reader.readAsDataURL(file)
-  })
-}
+const projectStampUrl = '/api/default-stamp'
+const stampDiameterMm = 40
+const a4PortraitWidthMm = 210
+const a4LandscapeWidthMm = 297
 
 const positionLabels: Record<PositionKey, string> = {
   'bottom-right': '右下',
@@ -274,7 +236,8 @@ async function applyStamp(file: File, stampImage: HTMLImageElement, options: Sta
   const context = canvas.getContext('2d')
   if (!context) throw new Error('浏览器不支持图片处理')
 
-  const stampSize = Math.round(canvas.width * (options.sizePercent / 100))
+  const pageWidthMm = canvas.width > canvas.height ? a4LandscapeWidthMm : a4PortraitWidthMm
+  const stampSize = Math.round(canvas.width * (stampDiameterMm / pageWidthMm))
   const center = getStampCenter(canvas.width, canvas.height, stampSize, options.position)
 
   context.save()
@@ -324,22 +287,17 @@ async function compressImage(file: File) {
 
 export function QualificationToolsView() {
   const inputRef = useRef<HTMLInputElement>(null)
-  const stampInputRef = useRef<HTMLInputElement>(null)
   const filesRef = useRef<WorkFile[]>([])
   const [files, setFiles] = useState<WorkFile[]>([])
-  const storedStampValue = useSyncExternalStore(subscribeToStoredStamp, getStoredStampSnapshot, () => null)
-  const storedStamp = useMemo(() => parseStoredStamp(storedStampValue), [storedStampValue])
-  const stampUrl = storedStamp?.dataUrl || null
-  const stampName = storedStamp?.name || ''
   const [mode, setMode] = useState<ProcessMode>('stamp-compress')
   const [options, setOptions] = useState<StampOptions>({
     position: 'bottom-right',
-    sizePercent: 19,
     opacity: 88,
     angle: -8,
   })
   const [dragActive, setDragActive] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const [stampReady, setStampReady] = useState(false)
   const [stampError, setStampError] = useState('')
 
   const finishedFiles = files.filter((file) => file.status === 'done' && file.outputBlob && file.outputUrl)
@@ -349,10 +307,10 @@ export function QualificationToolsView() {
   const needsStamp = mode === 'stamp' || mode === 'stamp-compress'
 
   const stampPreviewStyle = useMemo(() => ({
-    width: `${options.sizePercent}%`,
+    width: `${(stampDiameterMm / a4PortraitWidthMm) * 100}%`,
     opacity: options.opacity / 100,
     transform: `rotate(${options.angle}deg)`,
-  }), [options.angle, options.opacity, options.sizePercent])
+  }), [options.angle, options.opacity])
 
   useEffect(() => {
     filesRef.current = files
@@ -399,36 +357,16 @@ export function QualificationToolsView() {
     setFiles([])
   }
 
-  const handleStampUpload = async (file?: File) => {
-    if (!file) return
-    try {
-      const dataUrl = await fileToDataUrl(file)
-      window.localStorage.setItem(stampStorageKey, JSON.stringify({ name: file.name, dataUrl }))
-      window.dispatchEvent(new Event(stampStorageEvent))
-      setStampError('')
-    } catch (error) {
-      setStampError(error instanceof Error ? error.message : '章图保存失败')
-    } finally {
-      if (stampInputRef.current) stampInputRef.current.value = ''
-    }
-  }
-
-  const forgetStamp = () => {
-    window.localStorage.removeItem(stampStorageKey)
-    window.dispatchEvent(new Event(stampStorageEvent))
-    setStampError('')
-  }
-
   const updateOptions = (patch: Partial<StampOptions>) => {
     setOptions((current) => ({ ...current, ...patch }))
   }
 
   const processFiles = async () => {
     if (!files.length || processing) return
-    if (needsStamp && !stampUrl) return
+    if (needsStamp && !stampReady) return
 
     setProcessing(true)
-    const stampImage = needsStamp && stampUrl ? await loadImageFromUrl(stampUrl) : null
+    const stampImage = needsStamp ? await loadImageFromUrl(projectStampUrl) : null
 
     for (const item of files) {
       setFiles((current) => current.map((file) => (
@@ -573,54 +511,44 @@ export function QualificationToolsView() {
                     <div>
                       <div className="flex items-center gap-2">
                         <Label className="text-[13px] font-semibold">章图</Label>
-                        {stampUrl && (
-                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300">
-                            浏览器已记住
-                          </Badge>
-                        )}
+                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300">
+                          项目默认章
+                        </Badge>
                       </div>
-                      <p className="mt-1 text-[12px] text-muted-foreground">{stampName || '选定一次，下次打开自动使用'}</p>
+                      <p className="mt-1 text-[12px] text-muted-foreground">广州熊动科技有限公司公章 · 固定直径 40mm</p>
+                      <p className="mt-1 text-[12px] text-muted-foreground">所有登录用户、所有电脑自动使用</p>
                       {stampError && <p className="mt-1 text-[12px] text-red-500">{stampError}</p>}
                     </div>
-                    <div className="flex items-center gap-2">
-                      {stampUrl && (
-                        <Button variant="ghost" size="sm" onClick={forgetStamp}>
-                          <X className="mr-2 h-4 w-4" />
-                          移除
-                        </Button>
-                      )}
-                      <Button variant="outline" size="sm" onClick={() => stampInputRef.current?.click()}>
-                        <ImagePlus className="mr-2 h-4 w-4" />
-                        {stampUrl ? '更换章' : '选定章'}
-                      </Button>
-                    </div>
-                    <input
-                      ref={stampInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(event) => void handleStampUpload(event.target.files?.[0])}
-                    />
                   </div>
 
                   <div className={cn('flex h-36 rounded-lg border border-dashed border-border/60 bg-muted/30 p-4', positionClasses[options.position])}>
-                    {stampUrl ? (
-                      <img src={stampUrl} alt="已选章图预览" className="max-w-[45%] object-contain" style={stampPreviewStyle} />
+                    {!stampError ? (
+                      <img
+                        src={projectStampUrl}
+                        alt="项目默认章预览"
+                        className="max-w-[45%] object-contain"
+                        style={stampPreviewStyle}
+                        onLoad={() => {
+                          setStampReady(true)
+                          setStampError('')
+                        }}
+                        onError={() => {
+                          setStampReady(false)
+                          setStampError('项目默认章加载失败')
+                        }}
+                      />
                     ) : (
                       <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                         <Stamp className="h-8 w-8" />
-                        <span className="text-[12px]">未选定章图</span>
+                        <span className="text-[12px]">项目默认章暂不可用</span>
                       </div>
                     )}
                   </div>
 
                   <div className="space-y-3">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-[12px]">
-                        <Label>大小</Label>
-                        <span className="tabular-nums text-muted-foreground">{options.sizePercent}%</span>
-                      </div>
-                      <Slider value={[options.sizePercent]} min={10} max={32} step={1} onValueChange={([value]) => updateOptions({ sizePercent: value })} />
+                    <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-[12px]">
+                      <Label>公章尺寸</Label>
+                      <span className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">固定 40mm</span>
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-[12px]">
@@ -677,7 +605,7 @@ export function QualificationToolsView() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button className="flex-1" onClick={processFiles} disabled={processing || !files.length || (needsStamp && !stampUrl)}>
+                <Button className="flex-1" onClick={processFiles} disabled={processing || !files.length || (needsStamp && !stampReady)}>
                   {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BadgeCheck className="mr-2 h-4 w-4" />}
                   开始处理
                 </Button>
