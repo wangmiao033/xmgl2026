@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import {
   Archive,
   BadgeCheck,
@@ -47,6 +47,45 @@ interface StampOptions {
 
 const targetBytes = 950_000
 const oneMegabyte = 1_000_000
+const stampStorageKey = 'xmgl2026-selected-stamp-v1'
+const stampStorageEvent = 'xmgl2026-stamp-changed'
+
+interface StoredStamp {
+  name: string
+  dataUrl: string
+}
+
+function subscribeToStoredStamp(callback: () => void) {
+  window.addEventListener('storage', callback)
+  window.addEventListener(stampStorageEvent, callback)
+  return () => {
+    window.removeEventListener('storage', callback)
+    window.removeEventListener(stampStorageEvent, callback)
+  }
+}
+
+function getStoredStampSnapshot() {
+  return window.localStorage.getItem(stampStorageKey)
+}
+
+function parseStoredStamp(value: string | null): StoredStamp | null {
+  if (!value) return null
+  try {
+    const stamp = JSON.parse(value) as Partial<StoredStamp>
+    return stamp.name && stamp.dataUrl ? { name: stamp.name, dataUrl: stamp.dataUrl } : null
+  } catch {
+    return null
+  }
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('章图读取失败'))
+    reader.onerror = () => reject(new Error('章图读取失败'))
+    reader.readAsDataURL(file)
+  })
+}
 
 const positionLabels: Record<PositionKey, string> = {
   'bottom-right': '右下',
@@ -287,10 +326,11 @@ export function QualificationToolsView() {
   const inputRef = useRef<HTMLInputElement>(null)
   const stampInputRef = useRef<HTMLInputElement>(null)
   const filesRef = useRef<WorkFile[]>([])
-  const stampUrlRef = useRef<string | null>(null)
   const [files, setFiles] = useState<WorkFile[]>([])
-  const [stampUrl, setStampUrl] = useState<string | null>(null)
-  const [stampName, setStampName] = useState('')
+  const storedStampValue = useSyncExternalStore(subscribeToStoredStamp, getStoredStampSnapshot, () => null)
+  const storedStamp = useMemo(() => parseStoredStamp(storedStampValue), [storedStampValue])
+  const stampUrl = storedStamp?.dataUrl || null
+  const stampName = storedStamp?.name || ''
   const [mode, setMode] = useState<ProcessMode>('stamp-compress')
   const [options, setOptions] = useState<StampOptions>({
     position: 'bottom-right',
@@ -300,6 +340,7 @@ export function QualificationToolsView() {
   })
   const [dragActive, setDragActive] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const [stampError, setStampError] = useState('')
 
   const finishedFiles = files.filter((file) => file.status === 'done' && file.outputBlob && file.outputUrl)
   const totalOriginal = files.reduce((sum, item) => sum + item.file.size, 0)
@@ -318,16 +359,11 @@ export function QualificationToolsView() {
   }, [files])
 
   useEffect(() => {
-    stampUrlRef.current = stampUrl
-  }, [stampUrl])
-
-  useEffect(() => {
     return () => {
       filesRef.current.forEach((file) => {
         URL.revokeObjectURL(file.previewUrl)
         if (file.outputUrl) URL.revokeObjectURL(file.outputUrl)
       })
-      if (stampUrlRef.current) URL.revokeObjectURL(stampUrlRef.current)
     }
   }, [])
 
@@ -363,11 +399,24 @@ export function QualificationToolsView() {
     setFiles([])
   }
 
-  const handleStampUpload = (file?: File) => {
+  const handleStampUpload = async (file?: File) => {
     if (!file) return
-    if (stampUrl) URL.revokeObjectURL(stampUrl)
-    setStampUrl(URL.createObjectURL(file))
-    setStampName(file.name)
+    try {
+      const dataUrl = await fileToDataUrl(file)
+      window.localStorage.setItem(stampStorageKey, JSON.stringify({ name: file.name, dataUrl }))
+      window.dispatchEvent(new Event(stampStorageEvent))
+      setStampError('')
+    } catch (error) {
+      setStampError(error instanceof Error ? error.message : '章图保存失败')
+    } finally {
+      if (stampInputRef.current) stampInputRef.current.value = ''
+    }
+  }
+
+  const forgetStamp = () => {
+    window.localStorage.removeItem(stampStorageKey)
+    window.dispatchEvent(new Event(stampStorageEvent))
+    setStampError('')
   }
 
   const updateOptions = (patch: Partial<StampOptions>) => {
@@ -522,29 +571,45 @@ export function QualificationToolsView() {
                 <div className="space-y-4 rounded-xl border border-border/50 bg-background/70 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <Label className="text-[13px] font-semibold">章图</Label>
-                      <p className="mt-1 text-[12px] text-muted-foreground">{stampName || 'PNG 透明章效果最好'}</p>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[13px] font-semibold">章图</Label>
+                        {stampUrl && (
+                          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300">
+                            浏览器已记住
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="mt-1 text-[12px] text-muted-foreground">{stampName || '选定一次，下次打开自动使用'}</p>
+                      {stampError && <p className="mt-1 text-[12px] text-red-500">{stampError}</p>}
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => stampInputRef.current?.click()}>
-                      <ImagePlus className="mr-2 h-4 w-4" />
-                      上传章
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      {stampUrl && (
+                        <Button variant="ghost" size="sm" onClick={forgetStamp}>
+                          <X className="mr-2 h-4 w-4" />
+                          移除
+                        </Button>
+                      )}
+                      <Button variant="outline" size="sm" onClick={() => stampInputRef.current?.click()}>
+                        <ImagePlus className="mr-2 h-4 w-4" />
+                        {stampUrl ? '更换章' : '选定章'}
+                      </Button>
+                    </div>
                     <input
                       ref={stampInputRef}
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(event) => handleStampUpload(event.target.files?.[0])}
+                      onChange={(event) => void handleStampUpload(event.target.files?.[0])}
                     />
                   </div>
 
                   <div className={cn('flex h-36 rounded-lg border border-dashed border-border/60 bg-muted/30 p-4', positionClasses[options.position])}>
                     {stampUrl ? (
-                      <img src={stampUrl} alt="stamp preview" className="max-w-[45%] object-contain" style={stampPreviewStyle} />
+                      <img src={stampUrl} alt="已选章图预览" className="max-w-[45%] object-contain" style={stampPreviewStyle} />
                     ) : (
                       <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                         <Stamp className="h-8 w-8" />
-                        <span className="text-[12px]">未上传章图</span>
+                        <span className="text-[12px]">未选定章图</span>
                       </div>
                     )}
                   </div>
