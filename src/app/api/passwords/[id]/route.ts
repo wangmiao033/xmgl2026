@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authenticate } from '@/lib/with-auth'
-import { encryptPassword } from '@/lib/encryption'
+import { decryptPassword, encryptPassword } from '@/lib/encryption'
 
 export async function PUT(
   request: NextRequest,
@@ -30,7 +30,14 @@ export async function PUT(
       },
     })
 
-    return NextResponse.json(entry)
+    let readablePassword = entry.password
+    try {
+      readablePassword = decryptPassword(entry.password)
+    } catch (error) {
+      console.error(`Error decrypting password entry ${entry.id}:`, error)
+    }
+
+    return NextResponse.json({ ...entry, password: readablePassword })
   } catch (error) {
     console.error('Error updating password:', error)
     return NextResponse.json({ error: 'Failed to update password' }, { status: 500 })
