@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { authenticate } from '@/lib/with-auth'
-import { encryptPassword } from '@/lib/encryption'
+import { decryptPassword, encryptPassword } from '@/lib/encryption'
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,7 +31,19 @@ export async function GET(request: NextRequest) {
       orderBy: [{ isFavorite: 'desc' }, { updatedAt: 'desc' }],
     })
 
-    return NextResponse.json(entries)
+    // Keep the existing client contract: authenticated users receive usable
+    // password values. Legacy plaintext rows pass through unchanged; newly
+    // encrypted rows are decrypted here on the server.
+    const readableEntries = entries.map((entry) => {
+      try {
+        return { ...entry, password: decryptPassword(entry.password) }
+      } catch (error) {
+        console.error(`Error decrypting password entry ${entry.id}:`, error)
+        return entry
+      }
+    })
+
+    return NextResponse.json(readableEntries)
   } catch (error) {
     console.error('Error fetching passwords:', error)
     return NextResponse.json({ error: 'Failed to fetch passwords' }, { status: 500 })
@@ -50,12 +62,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Title and password are required' }, { status: 400 })
     }
 
+    const plainPassword = password.trim()
     const entry = await db.passwordEntry.create({
       data: {
         title: title.trim(),
         url: url?.trim() || null,
         username: username?.trim() || null,
-        password: encryptPassword(password.trim()),
+        password: encryptPassword(plainPassword),
         email: email?.trim() || null,
         phone: phone?.trim() || null,
         notes: notes?.trim() || null,
@@ -63,7 +76,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(entry, { status: 201 })
+    return NextResponse.json({ ...entry, password: plainPassword }, { status: 201 })
   } catch (error) {
     console.error('Error creating password:', error)
     return NextResponse.json({ error: 'Failed to create password' }, { status: 500 })
