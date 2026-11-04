@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { parseAuthCookieValue } from '@/lib/auth'
 import { authenticate } from '@/lib/with-auth'
+import { OVERSEAS_ADMIN_COOKIE } from '@/lib/overseas-admin-session'
 
 // In-memory token store (simple approach for internal tool)
 // In production, use Redis or database sessions
@@ -161,5 +162,6 @@ export async function DELETE(request: NextRequest) {
 
   const response = NextResponse.json({ success: true })
   response.cookies.set('session_token', '', { maxAge: 0, path: '/' })
+  response.cookies.set(OVERSEAS_ADMIN_COOKIE, '', { maxAge: 0, path: '/' })
   return response
 }
