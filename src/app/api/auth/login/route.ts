@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { createAuthCookieValue, verifyPassword } from '@/lib/auth'
+import { mintOverseasAdminSession, OVERSEAS_ADMIN_COOKIE } from '@/lib/overseas-admin-session'
 
 const ONE_DAY_SECONDS = 60 * 60 * 24
 
@@ -48,6 +49,19 @@ export async function POST(request: NextRequest) {
       maxAge: ONE_DAY_SECONDS,
       path: '/',
     })
+
+    if (user.role === 'admin' && process.env.OVERSEAS_ALLOWED_EMAIL && user.email.toLowerCase() === process.env.OVERSEAS_ALLOWED_EMAIL.toLowerCase()) {
+      const overseasToken = mintOverseasAdminSession(user.id)
+      if (overseasToken) {
+        response.cookies.set(OVERSEAS_ADMIN_COOKIE, overseasToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: ONE_DAY_SECONDS,
+          path: '/',
+        })
+      }
+    }
 
     return response
   } catch (error) {
