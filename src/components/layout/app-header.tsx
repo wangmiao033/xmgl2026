@@ -32,6 +32,7 @@ const viewTitles: Record<string, string> = {
   settings: '系统设置',
   passwords: '密码管理',
   'qualification-tools': '资质工具',
+  'overseas-opportunities': '海外合作',
 }
 
 interface HeaderUser {

@@ -12,6 +12,7 @@ import {
   X,
   KeyRound,
   Stamp,
+  Globe2,
 } from 'lucide-react'
 import {
   Sidebar,
@@ -33,6 +34,7 @@ import { cn } from '@/lib/utils'
 const navItems: { title: string; icon: React.ElementType; view: ViewType }[] = [
   { title: '仪表板', icon: LayoutDashboard, view: 'dashboard' },
   { title: '项目列表', icon: FolderKanban, view: 'projects' },
+  { title: '海外合作', icon: Globe2, view: 'overseas-opportunities' },
   { title: '资质工具', icon: Stamp, view: 'qualification-tools' },
   { title: '密码管理', icon: KeyRound, view: 'passwords' },
 ]
@@ -257,7 +259,7 @@ export function AppSidebar({ currentUser, onLogout }: { currentUser?: { name: st
           <SidebarGroupLabel className="text-slate-500 px-4 text-[11px] uppercase tracking-wider font-medium">导航</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {navItems.filter((item) => item.view !== 'overseas-opportunities' || currentUser?.role === 'admin').map((item) => (
                 <SidebarMenuItem key={item.view}>
                   <SidebarMenuButton
                     isActive={currentView === item.view}

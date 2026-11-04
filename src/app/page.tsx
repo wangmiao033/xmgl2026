@@ -11,6 +11,7 @@ import { DocumentsCenterView } from '@/components/views/documents-center-view'
 import { SettingsView } from '@/components/views/settings-view'
 import { PasswordsView } from '@/components/views/passwords-view'
 import { QualificationToolsView } from '@/components/views/qualification-tools-view'
+import { OverseasOpportunitiesView } from '@/components/views/overseas-opportunities-view'
 import { LoginView } from '@/components/auth/login-view'
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { Toaster } from '@/components/ui/sonner'
@@ -41,6 +42,7 @@ const viewComponents: Record<string, React.ComponentType> = {
   settings: SettingsView,
   passwords: PasswordsView,
   'qualification-tools': QualificationToolsView,
+  'overseas-opportunities': OverseasOpportunitiesView,
 }
 
 function normalizeUser(user: LoginUserInfo): UserInfo {
