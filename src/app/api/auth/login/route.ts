@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       path: '/',
     })
 
-    if (user.role === 'admin') {
+    if (user.role === 'admin' && process.env.OVERSEAS_ALLOWED_EMAIL && user.email.toLowerCase() === process.env.OVERSEAS_ALLOWED_EMAIL.toLowerCase()) {
       const overseasToken = mintOverseasAdminSession(user.id)
       if (overseasToken) {
         response.cookies.set(OVERSEAS_ADMIN_COOKIE, overseasToken, {
