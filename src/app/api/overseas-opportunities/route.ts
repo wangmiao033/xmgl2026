@@ -25,6 +25,10 @@ async function ensureOwner(request: NextRequest) {
   if (auth.session.role !== 'admin') {
     return { error: NextResponse.json({ error: '仅管理员可访问海外合作台账' }, { status: 403, headers: privateHeaders }) }
   }
+  const allowedEmail = process.env.OVERSEAS_ALLOWED_EMAIL?.trim().toLowerCase()
+  if (!allowedEmail || auth.session.email.toLowerCase() !== allowedEmail) {
+    return { error: NextResponse.json({ error: '当前账号没有海外合作数据权限' }, { status: 403, headers: privateHeaders }) }
+  }
   if (!verifyOverseasAdminSession(request.cookies.get(OVERSEAS_ADMIN_COOKIE)?.value, auth.session.userId)) {
     return { error: NextResponse.json({ error: '请退出后用原账号重新登录，以启用海外合作的安全会话' }, { status: 403, headers: privateHeaders }) }
   }
